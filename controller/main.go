@@ -52,18 +52,7 @@ func (c *controller) cleanup(logger *zap.Logger) {
 	c.wg.Wait()
 }
 
-func setupServer(logger *zap.Logger, port int) net.Listener {
-	address := fmt.Sprintf("[::]:%d", port)
-
-	server, err := net.Listen("tcp", address)
-	if err != nil {
-		logger.Fatal("Server failed to start", zap.Error(err))
-	}
-
-	logger.Info("Server started listening", zap.String("address", server.Addr().String()))
-
-	return server
-}
+func handleRegistration() {}
 
 func handleConnection(logger *zap.Logger, conn net.Conn) {
 	if conn == nil {
@@ -90,6 +79,19 @@ func handleConnection(logger *zap.Logger, conn net.Conn) {
 			return
 		}
 	}
+}
+
+func setupServer(logger *zap.Logger, port int) net.Listener {
+	address := fmt.Sprintf("[::]:%d", port)
+
+	server, err := net.Listen("tcp", address)
+	if err != nil {
+		logger.Fatal("Server failed to start", zap.Error(err))
+	}
+
+	logger.Info("Server started listening", zap.String("address", server.Addr().String()))
+
+	return server
 }
 
 func handleArguments(settings *settings) {
@@ -139,14 +141,13 @@ func main() {
 	server := setupServer(logger, settings.port)
 	controller.server = server
 
+	// handle ctrl+c terminations
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		<-stop
-
 		controller.cleanup(logger)
-
 		os.Exit(0)
 	}()
 
