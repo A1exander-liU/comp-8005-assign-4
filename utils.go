@@ -16,6 +16,7 @@ type Message struct {
 	Version, Type, Message string
 }
 
+// ParseAddress builds an IP:Port string. An empty string is returned if parsing failed.
 func ParseAddress(ip string, port int) string {
 	if ip == "localhost" {
 		ip = "127.0.0.1"
