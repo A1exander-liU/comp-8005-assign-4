@@ -1,21 +1,31 @@
 package main
 
 import (
+	"encoding/gob"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"time"
 
 	utils "github.com/A1exander-liU/comp-8005-assign-1"
+	"go.uber.org/zap"
 )
 
 type settings struct {
-	controllerIP   string
-	controllerPort int
+	controllerIP      string
+	controllerPort    int
+	controllerAddress string
+}
+
+func crackPassword(message utils.Message) {
+	log.Println(message)
+	log.Println("cracking password")
 }
 
 func setupServer(controllerIP string, controllerPort int) net.Conn {
+	utils.ParseAddress(controllerIP, controllerPort)
 	controllerAddress := fmt.Sprintf("%s:%d", controllerIP, controllerPort)
 	fmt.Println(controllerAddress)
 
@@ -38,6 +48,13 @@ func handleArguments(settings *settings) {
 		flag.Usage()
 		os.Exit(1)
 	}
+
+	result := utils.ParseAddress(settings.controllerIP, settings.controllerPort)
+	if result == "" {
+		fmt.Println("controller ip is not in correct format")
+		flag.Usage()
+		os.Exit(1)
+	}
 }
 
 func parseArguments() settings {
@@ -52,12 +69,23 @@ func parseArguments() settings {
 }
 
 func main() {
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync().Error()
+
 	settings := parseArguments()
 	handleArguments(&settings)
 
-	fmt.Println(settings)
+	logger.Info("Settings",
+		zap.String("controller ip", settings.controllerIP),
+		zap.Int("controller port", settings.controllerPort),
+	)
 
-	socket := setupServer(settings.controllerIP, settings.controllerPort)
+	conn := setupServer(settings.controllerIP, settings.controllerPort)
 
-	utils.Send(socket, utils.Message{Version: "1", Type: "a", Message: "hello"})
+	encoder := gob.NewEncoder(conn)
+
+	_ = encoder.Encode(utils.Message{Version: "1", Type: "STATUS", Message: "hello"})
+	_ = encoder.Encode(utils.Message{Version: "1", Type: "STATUS", Message: "world"})
+	time.Sleep(5 * time.Second)
+	_ = encoder.Encode(utils.Message{Version: "1", Type: "DONE", Message: "hello"})
 }
