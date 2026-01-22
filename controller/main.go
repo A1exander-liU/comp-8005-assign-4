@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/gob"
 	"flag"
 	"fmt"
 	"net"
@@ -9,14 +10,12 @@ import (
 	"sync"
 	"syscall"
 
+	utils "github.com/A1exander-liU/comp-8005-assign-1"
 	"go.uber.org/zap"
 )
 
-type Worker struct{}
-
 type controller struct {
 	server net.Listener
-	logger *zap.Logger
 
 	workers map[string]net.Conn
 
@@ -40,8 +39,8 @@ func newController() *controller {
 	return &c
 }
 
-func (c *controller) cleanup() {
-	c.logger.Info("Doing graceful server shutdown")
+func (c *controller) cleanup(logger *zap.Logger) {
+	logger.Info("Doing graceful server shutdown")
 
 	if c.server == nil {
 		return
@@ -63,6 +62,24 @@ func setupServer(logger *zap.Logger, port int) net.Listener {
 	logger.Info("Server started listening", zap.String("address", server.Addr().String()))
 
 	return server
+}
+
+func handleConnection(logger *zap.Logger, conn net.Conn) {
+	decoder := gob.NewDecoder(conn)
+
+	for {
+		var m utils.Message
+
+		if err := decoder.Decode(&m); err != nil {
+			logger.Error("Failed to decode", zap.Error(err))
+		}
+
+		logger.Info("Message received",
+			zap.String("version", m.Version),
+			zap.String("type", m.Type),
+			zap.String("message", m.Message),
+		)
+	}
 }
 
 func handleArguments(settings *settings) {
@@ -99,18 +116,17 @@ func main() {
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync().Error()
 	controller := newController()
-	controller.logger = logger
 
 	settings := parseArguments()
 	handleArguments(&settings)
 
-	controller.logger.Info("Settings",
+	logger.Info("Settings",
 		zap.String("shadowfile", settings.shadowfile),
 		zap.String("username", settings.username),
 		zap.Int("port", settings.port),
 	)
 
-	server := setupServer(controller.logger, settings.port)
+	server := setupServer(logger, settings.port)
 	controller.server = server
 
 	stop := make(chan os.Signal, 1)
@@ -119,7 +135,7 @@ func main() {
 	go func() {
 		<-stop
 
-		controller.cleanup()
+		controller.cleanup(logger)
 
 		os.Exit(0)
 	}()
@@ -131,14 +147,17 @@ func main() {
 			case <-controller.quit:
 				return
 			default:
-				controller.logger.Error("Accept connection failed", zap.Error(err))
+				logger.Error("Accept connection failed", zap.Error(err))
 			}
 
 			continue
 		}
 
 		controller.wg.Add(1)
-		controller.logger.Info("Connection received", zap.String("address", conn.LocalAddr().String()))
-		controller.wg.Done()
+		controller.wg.Go(func() {
+			logger.Info("Connection received", zap.String("address", conn.RemoteAddr().String()))
+			handleConnection(logger, conn)
+			controller.wg.Done()
+		})
 	}
 }
