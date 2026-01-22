@@ -33,6 +33,7 @@ func newController() *controller {
 	c := controller{
 		workers: make(map[string]net.Conn),
 		quit:    make(chan any),
+		wg:      sync.WaitGroup{},
 	}
 
 	c.wg.Add(1)
@@ -65,6 +66,9 @@ func setupServer(logger *zap.Logger, port int) net.Listener {
 }
 
 func handleConnection(logger *zap.Logger, conn net.Conn) {
+	if conn == nil {
+		return
+	}
 	decoder := gob.NewDecoder(conn)
 
 	for {
@@ -72,6 +76,7 @@ func handleConnection(logger *zap.Logger, conn net.Conn) {
 
 		if err := decoder.Decode(&m); err != nil {
 			logger.Error("Failed to decode", zap.Error(err))
+			return
 		}
 
 		logger.Info("Message received",
@@ -79,6 +84,11 @@ func handleConnection(logger *zap.Logger, conn net.Conn) {
 			zap.String("type", m.Type),
 			zap.String("message", m.Message),
 		)
+
+		if m.Type == "DONE" {
+			_ = conn.Close()
+			return
+		}
 	}
 }
 
