@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"time"
 
 	utils "github.com/A1exander-liU/comp-8005-assign-1"
 	"go.uber.org/zap"
@@ -19,9 +18,83 @@ type settings struct {
 	controllerAddress string
 }
 
-func crackPassword(message utils.Message) {
+func crackPassword(message utils.Message) string {
 	log.Println(message)
 	log.Println("cracking password")
+
+	return "cracked"
+}
+
+func sendTermination(logger *zap.Logger, encoder *gob.Encoder) {
+	m := utils.Message{Version: "1", Type: "DONE", Message: "Finished"}
+	_ = encoder.Encode(m)
+	logger.Info("Send connection termination",
+		zap.String("version", m.Version),
+		zap.String("type", m.Type),
+		zap.String("message", m.Message),
+	)
+}
+
+func sendJobResults(logger *zap.Logger, encoder *gob.Encoder, result string) {
+	m := utils.Message{Version: "1", Type: "JOB.RESULTS", Message: result}
+	_ = encoder.Encode(m)
+	logger.Info("Send job results",
+		zap.String("version", m.Version),
+		zap.String("type", m.Type),
+		zap.String("message", m.Message),
+	)
+}
+
+func handleJob(logger *zap.Logger, decoder *gob.Decoder) utils.Message {
+	for {
+		var m utils.Message
+
+		if err := decoder.Decode(&m); err != nil {
+			logger.Error("Failed to decode", zap.Error(err))
+			continue
+		}
+
+		logger.Info("Message received",
+			zap.String("version", m.Version),
+			zap.String("type", m.Type),
+			zap.String("message", m.Message),
+		)
+
+		if m.Type == "JOB.DETAILS" {
+			return m
+		}
+	}
+}
+
+func handleRegistrationConfirmation(logger *zap.Logger, decoder *gob.Decoder) {
+	for {
+		var m utils.Message
+
+		if err := decoder.Decode(&m); err != nil {
+			logger.Error("Failed to decode", zap.Error(err))
+			continue
+		}
+
+		logger.Info("Message received",
+			zap.String("version", m.Version),
+			zap.String("type", m.Type),
+			zap.String("message", m.Message),
+		)
+
+		if m.Type == "REGISTRATION.CONFIRMATION" {
+			return
+		}
+	}
+}
+
+func sendRegistration(logger *zap.Logger, encoder *gob.Encoder) {
+	m := utils.Message{Version: "1", Type: "REGISTRATION", Message: "Requesting registration"}
+	_ = encoder.Encode(m)
+	logger.Info("Sending resgistration",
+		zap.String("version", m.Version),
+		zap.String("type", m.Type),
+		zap.String("message", m.Message),
+	)
 }
 
 func setupServer(controllerIP string, controllerPort int) net.Conn {
@@ -83,9 +156,12 @@ func main() {
 	conn := setupServer(settings.controllerIP, settings.controllerPort)
 
 	encoder := gob.NewEncoder(conn)
+	decoder := gob.NewDecoder(conn)
 
-	_ = encoder.Encode(utils.Message{Version: "1", Type: "STATUS", Message: "hello"})
-	_ = encoder.Encode(utils.Message{Version: "1", Type: "STATUS", Message: "world"})
-	time.Sleep(5 * time.Second)
-	_ = encoder.Encode(utils.Message{Version: "1", Type: "DONE", Message: "hello"})
+	sendRegistration(logger, encoder)
+	handleRegistrationConfirmation(logger, decoder)
+	m := handleJob(logger, decoder)
+	result := crackPassword(m)
+	sendJobResults(logger, encoder, result)
+	sendTermination(logger, encoder)
 }
