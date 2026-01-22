@@ -3,16 +3,25 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"os"
+	"os/signal"
+	"sync"
 	"syscall"
 
-	utils "github.com/A1exander-liU/comp-8005-assign-1"
+	"go.uber.org/zap"
 )
 
-type Controller struct {
-	socket net.Listener
+type Worker struct{}
+
+type controller struct {
+	server net.Listener
+	logger *zap.Logger
+
+	workers map[string]net.Conn
+
+	quit chan any
+	wg   sync.WaitGroup
 }
 
 type settings struct {
@@ -21,49 +30,38 @@ type settings struct {
 	port       int
 }
 
-func listen(address string) net.Listener {
-	server, err := net.Listen("tcp", address)
-	if err != nil {
-		fmt.Println("Failed to listen:\n", err)
-		os.Exit(1)
+func newController() *controller {
+	c := controller{
+		workers: make(map[string]net.Conn),
+		quit:    make(chan any),
 	}
-	fmt.Printf("Server listening on %s\n", address)
-	return server
+
+	c.wg.Add(1)
+	return &c
 }
 
-func cleanup(conn net.Listener) {
-	if conn != nil {
-		err := conn.Close()
-		if err != nil {
-			log.Fatal("Close error:", err)
-		}
+func (c *controller) cleanup() {
+	c.logger.Info("Doing graceful server shutdown")
 
-		log.Println("Server closed successfully")
+	if c.server == nil {
+		return
 	}
-	log.Println("Exiting")
-	os.Exit(0)
+
+	close(c.quit)
+	_ = c.server.Close()
+	c.wg.Wait()
 }
 
-func handleSigInt(channel chan os.Signal, exit func(net.Listener), conn net.Listener) {
-	for {
-		sig := <-channel
-
-		switch sig {
-		case os.Interrupt, syscall.SIGINT:
-			exit(conn)
-		}
-	}
-}
-
-func setupServer(port int) net.Listener {
+func setupServer(logger *zap.Logger, port int) net.Listener {
 	address := fmt.Sprintf("[::]:%d", port)
 
 	server, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("Server failed to start", zap.Error(err))
 	}
 
-	log.Println("Listening on:", server.Addr().String())
+	logger.Info("Server started listening", zap.String("address", server.Addr().String()))
+
 	return server
 }
 
@@ -98,24 +96,49 @@ func parseArguments() settings {
 }
 
 func main() {
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync().Error()
+	controller := newController()
+	controller.logger = logger
+
 	settings := parseArguments()
 	handleArguments(&settings)
 
-	fmt.Println(settings)
+	controller.logger.Info("Settings",
+		zap.String("shadowfile", settings.shadowfile),
+		zap.String("username", settings.username),
+		zap.Int("port", settings.port),
+	)
 
-	server := setupServer(settings.port)
+	server := setupServer(controller.logger, settings.port)
+	controller.server = server
 
-	sigChan := make(chan os.Signal, 1)
-	go handleSigInt(sigChan, cleanup, server)
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-stop
+
+		controller.cleanup()
+
+		os.Exit(0)
+	}()
 
 	for {
-		conn, err := server.Accept()
+		conn, err := controller.server.Accept()
 		if err != nil {
-			log.Println("accept error:", err)
+			select {
+			case <-controller.quit:
+				return
+			default:
+				controller.logger.Error("Accept connection failed", zap.Error(err))
+			}
+
 			continue
 		}
 
-		message := utils.Receive(conn)
-		fmt.Println(message)
+		controller.wg.Add(1)
+		controller.logger.Info("Connection received", zap.String("address", conn.LocalAddr().String()))
+		controller.wg.Done()
 	}
 }
