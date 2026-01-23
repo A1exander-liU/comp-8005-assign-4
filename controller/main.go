@@ -114,6 +114,7 @@ func handleConnection(logger *zap.Logger, conn net.Conn, s utils.ShadowData) {
 
 		switch m.Type {
 		case "connection.terminate":
+			_ = conn.Close()
 			return
 		case "registration.request":
 			handleRegistration(logger)
