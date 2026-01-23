@@ -45,25 +45,8 @@ func sendJobResults(logger *zap.Logger, encoder *gob.Encoder, result string) {
 	)
 }
 
-func handleJob(logger *zap.Logger, decoder *gob.Decoder) utils.Message {
-	for {
-		var m utils.Message
-
-		if err := decoder.Decode(&m); err != nil {
-			logger.Error("Failed to decode", zap.Error(err))
-			continue
-		}
-
-		logger.Info("Message received",
-			zap.String("version", m.Version),
-			zap.String("type", m.Type),
-			zap.String("message", m.Message),
-		)
-
-		if m.Type == "job.details" {
-			return m
-		}
-	}
+func handleJob(logger *zap.Logger, m utils.Message) utils.Message {
+	return m
 }
 
 func handleRegistrationConfirmation(logger *zap.Logger, decoder *gob.Decoder, encoder *gob.Encoder) {
@@ -159,9 +142,28 @@ func main() {
 	decoder := gob.NewDecoder(conn)
 
 	sendRegistration(logger, encoder)
-	handleRegistrationConfirmation(logger, decoder, encoder)
-	m := handleJob(logger, decoder)
-	result := crackPassword(m)
-	sendJobResults(logger, encoder, result)
-	sendTermination(logger, encoder)
+	for {
+		var m utils.Message
+
+		if err := decoder.Decode(&m); err != nil {
+			logger.Error("Failed to decode", zap.Error(err))
+			continue
+		}
+
+		logger.Info("Message received",
+			zap.String("version", m.Version),
+			zap.String("type", m.Type),
+			zap.String("message", m.Message),
+		)
+
+		switch m.Type {
+		case "registration.confirm":
+			_ = encoder.Encode(utils.Message{Version: "1", Type: "registration.confirm", Message: "Sending confirmation back"})
+		case "job.details":
+			newM := handleJob(logger, m)
+			result := crackPassword(newM)
+			sendJobResults(logger, encoder, result)
+			sendTermination(logger, encoder)
+		}
+	}
 }
