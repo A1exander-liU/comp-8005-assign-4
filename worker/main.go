@@ -164,6 +164,7 @@ func main() {
 			result := crackPassword(newM)
 			sendJobResults(logger, encoder, result)
 			sendTermination(logger, encoder)
+			_ = conn.Close()
 		}
 	}
 }
