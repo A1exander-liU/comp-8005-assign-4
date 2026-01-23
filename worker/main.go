@@ -9,6 +9,7 @@ import (
 	"os"
 
 	utils "github.com/A1exander-liU/comp-8005-assign-1"
+	"github.com/go-crypt/crypt"
 	"go.uber.org/zap"
 )
 
@@ -19,10 +20,13 @@ type settings struct {
 }
 
 func crackPassword(message utils.Message) string {
-	log.Println(message)
-	log.Println("cracking password")
+	decoder, _ := crypt.NewDecoderAll()
+	crackedPassword, err := utils.CrackPassword(decoder, message.Data.Hash, 3)
+	if err != nil {
+		return "Failed to crack password"
+	}
 
-	return "cracked"
+	return crackedPassword
 }
 
 func sendTermination(logger *zap.Logger, encoder *gob.Encoder) {
@@ -47,27 +51,6 @@ func sendJobResults(logger *zap.Logger, encoder *gob.Encoder, result string) {
 
 func handleJob(logger *zap.Logger, m utils.Message) utils.Message {
 	return m
-}
-
-func handleRegistrationConfirmation(logger *zap.Logger, decoder *gob.Decoder, encoder *gob.Encoder) {
-	for {
-		var m utils.Message
-
-		if err := decoder.Decode(&m); err != nil {
-			logger.Error("Failed to decode", zap.Error(err))
-			continue
-		}
-
-		logger.Info("Message received",
-			zap.String("version", m.Version),
-			zap.String("type", m.Type),
-			zap.String("message", m.Message),
-		)
-
-		if m.Type == "registration.confirm" {
-			_ = encoder.Encode(utils.Message{Version: "1", Type: "registration.confirm", Message: "Sending confirmation back"})
-		}
-	}
 }
 
 func sendRegistration(logger *zap.Logger, encoder *gob.Encoder) {
