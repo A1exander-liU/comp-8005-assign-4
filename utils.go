@@ -10,8 +10,14 @@ import (
 	"strconv"
 )
 
+type ShadowData struct {
+	Algorithm, Salt, Hash string
+}
+
 type Message struct {
 	Version, Type, Message string
+	Data                   ShadowData
+	Result                 string
 }
 
 // ParseAddress builds an IP:Port string. An empty string is returned if parsing failed.

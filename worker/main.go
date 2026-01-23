@@ -26,7 +26,7 @@ func crackPassword(message utils.Message) string {
 }
 
 func sendTermination(logger *zap.Logger, encoder *gob.Encoder) {
-	m := utils.Message{Version: "1", Type: "DONE", Message: "Finished"}
+	m := utils.Message{Version: "1", Type: "connection.termintate", Message: "Finished"}
 	_ = encoder.Encode(m)
 	logger.Info("Send connection termination",
 		zap.String("version", m.Version),
@@ -36,7 +36,7 @@ func sendTermination(logger *zap.Logger, encoder *gob.Encoder) {
 }
 
 func sendJobResults(logger *zap.Logger, encoder *gob.Encoder, result string) {
-	m := utils.Message{Version: "1", Type: "JOB.RESULTS", Message: result}
+	m := utils.Message{Version: "1", Type: "job.results", Message: "Password cracked", Result: result}
 	_ = encoder.Encode(m)
 	logger.Info("Send job results",
 		zap.String("version", m.Version),
@@ -60,13 +60,13 @@ func handleJob(logger *zap.Logger, decoder *gob.Decoder) utils.Message {
 			zap.String("message", m.Message),
 		)
 
-		if m.Type == "JOB.DETAILS" {
+		if m.Type == "job.details" {
 			return m
 		}
 	}
 }
 
-func handleRegistrationConfirmation(logger *zap.Logger, decoder *gob.Decoder) {
+func handleRegistrationConfirmation(logger *zap.Logger, decoder *gob.Decoder, encoder *gob.Encoder) {
 	for {
 		var m utils.Message
 
@@ -81,14 +81,14 @@ func handleRegistrationConfirmation(logger *zap.Logger, decoder *gob.Decoder) {
 			zap.String("message", m.Message),
 		)
 
-		if m.Type == "REGISTRATION.CONFIRMATION" {
-			return
+		if m.Type == "registration.confirm" {
+			_ = encoder.Encode(utils.Message{Version: "1", Type: "registration.confirm", Message: "Sending confirmation back"})
 		}
 	}
 }
 
 func sendRegistration(logger *zap.Logger, encoder *gob.Encoder) {
-	m := utils.Message{Version: "1", Type: "REGISTRATION", Message: "Requesting registration"}
+	m := utils.Message{Version: "1", Type: "registration.request", Message: "Requesting registration"}
 	_ = encoder.Encode(m)
 	logger.Info("Sending resgistration",
 		zap.String("version", m.Version),
@@ -159,7 +159,7 @@ func main() {
 	decoder := gob.NewDecoder(conn)
 
 	sendRegistration(logger, encoder)
-	handleRegistrationConfirmation(logger, decoder)
+	handleRegistrationConfirmation(logger, decoder, encoder)
 	m := handleJob(logger, decoder)
 	result := crackPassword(m)
 	sendJobResults(logger, encoder, result)

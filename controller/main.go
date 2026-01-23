@@ -52,13 +52,51 @@ func (c *controller) cleanup(logger *zap.Logger) {
 	c.wg.Wait()
 }
 
-func handleRegistration() {}
+func displayJobResults(logger *zap.Logger, m utils.Message) {
+	logger.Info("Displaying crack results",
+		zap.String("version", m.Version),
+		zap.String("type", m.Type),
+		zap.String("message", m.Message),
+		zap.String("result", m.Result),
+	)
+}
+func handleJobResults(logger *zap.Logger, m utils.Message) {}
+func sendJob(logger *zap.Logger, encoder *gob.Encoder, s utils.ShadowData) {
+	m := utils.Message{
+		Version: "1", Type: "job.details", Message: "Cracking details",
+		Data: s,
+	}
+	_ = encoder.Encode(m)
+	logger.Info("Sending job details to worker",
+		zap.String("version", m.Version),
+		zap.String("type", m.Type),
+		zap.String("message", m.Message),
+	)
+}
 
-func handleConnection(logger *zap.Logger, conn net.Conn) {
+func sendRegistrationConfirmation(logger *zap.Logger, encoder *gob.Encoder) {
+	m := utils.Message{
+		Version: "1", Type: "registration.confirm", Message: "Sending registration confirmation",
+	}
+	_ = encoder.Encode(m)
+
+	logger.Info("Sending registration confirmation to worker",
+		zap.String("version", m.Version),
+		zap.String("type", m.Type),
+		zap.String("message", m.Message),
+	)
+}
+
+func handleRegistration(logger *zap.Logger) {
+	logger.Info("New worker connected")
+}
+
+func handleConnection(logger *zap.Logger, conn net.Conn, s utils.ShadowData) {
 	if conn == nil {
 		return
 	}
 	decoder := gob.NewDecoder(conn)
+	encoder := gob.NewEncoder(conn)
 
 	for {
 		var m utils.Message
@@ -74,9 +112,18 @@ func handleConnection(logger *zap.Logger, conn net.Conn) {
 			zap.String("message", m.Message),
 		)
 
-		if m.Type == "DONE" {
+		switch m.Type {
+		case "connection.terminate":
 			_ = conn.Close()
 			return
+		case "registration.request":
+			handleRegistration(logger)
+			sendRegistrationConfirmation(logger, encoder)
+		case "registration.confirm":
+			sendJob(logger, encoder, s)
+		case "job.results":
+			handleJobResults(logger, m)
+			displayJobResults(logger, m)
 		}
 	}
 }
@@ -92,6 +139,12 @@ func setupServer(logger *zap.Logger, port int) net.Listener {
 	logger.Info("Server started listening", zap.String("address", server.Addr().String()))
 
 	return server
+}
+
+func parseShadowFile(shadowfile, username string) utils.ShadowData {
+	return utils.ShadowData{
+		Algorithm: "y", Hash: shadowfile, Salt: username,
+	}
 }
 
 func handleArguments(settings *settings) {
@@ -138,6 +191,8 @@ func main() {
 		zap.Int("port", settings.port),
 	)
 
+	shadowData := parseShadowFile(settings.shadowfile, settings.username)
+
 	server := setupServer(logger, settings.port)
 	controller.server = server
 
@@ -167,7 +222,7 @@ func main() {
 		controller.wg.Add(1)
 		controller.wg.Go(func() {
 			logger.Info("Connection received", zap.String("address", conn.RemoteAddr().String()))
-			handleConnection(logger, conn)
+			handleConnection(logger, conn, shadowData)
 			controller.wg.Done()
 		})
 	}
