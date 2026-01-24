@@ -143,7 +143,7 @@ func setupServer(logger *zap.Logger, port int) net.Listener {
 
 func parseShadowFile(shadowfile, username string) utils.ShadowData {
 	return utils.ShadowData{
-		Algorithm: "y", Hash: shadowfile, Salt: username,
+		Algorithm: "y", Hash: "$2b$05$lZUNju84dSGTnlrUVpJtbePVtrZ2THxYRj5pj0GFY.5clEN.LUTg.", Salt: username,
 	}
 }
 
