@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -31,13 +30,12 @@ func ParseAddress(ip string, port int) string {
 //
 // Paramters may be an empty string depending on the algorithm used.
 func ParseHash(hash string) (ShadowData, error) {
-	passwordPattern := regexp.MustCompile(`(.*?)\:`)
 	// cut out first $ to prevent empty string in split
-	hash = passwordPattern.FindStringSubmatch(hash)[1][1:]
+	cleanedHash, _, _ := strings.Cut(hash, ":")
 
 	// 3 sections: algo + salt + hash
 	// 4 sections: algo + parameters + salt + hash
-	sections := strings.Split(hash, "$")
+	sections := strings.Split(cleanedHash[1:], "$")
 
 	switch len(sections) {
 	case 3:
