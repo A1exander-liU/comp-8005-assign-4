@@ -15,14 +15,12 @@ internal/             # lib
 
 # Running
 
-```
-go build controller/main.go
-go build worker/main.go
+```bash
+./build.sh
+
+./build/controller ..args
+./build/worker ...args
 ```
 
-or 
-
-```
-go run controller/main.go ...args
-go run woker/main.go ...args
-```
+Run `chmod +x` on the build script if there is a permission issue with
+executing it.
