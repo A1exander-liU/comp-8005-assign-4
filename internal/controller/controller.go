@@ -11,6 +11,13 @@ import (
 	"go.uber.org/zap"
 )
 
+// Config holds parameters for controller setup:
+//
+// - Shadowfile is the path to the shadowfile
+//
+// - Username is the username to crack password of
+//
+// - Port is the port number the controller should listen on
 type Config struct {
 	Shadowfile, Username string
 	Port                 int
