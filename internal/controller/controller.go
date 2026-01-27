@@ -12,33 +12,29 @@ import (
 	"go.uber.org/zap"
 )
 
-// TODO: controller should send the search space to the worker instead
-
-// Config holds parameters for controller setup:
-//
-// - Shadowfile is the path to the shadowfile
-//
-// - Username is the username to crack password of
-//
-// - Port is the port number the controller should listen on
+// Config holds parameters for controller setup.
 type Config struct {
-	Shadowfile, Username string
-	Port                 int
+	// Path to the shadowfile
+	Shadowfile string
+
+	// User's name to crack
+	Username string
+
+	// Port number for the controller to listen on
+	Port int
 }
 
 // Controller is reponsible for managing worker connections
 // for sending and receiving password cracking jobs.
 type Controller struct {
-	Logger     *zap.Logger
+	// Public logger for sending log messages
+	Logger *zap.Logger
+
 	listener   net.Listener
 	shadowData shared.ShadowData
 }
 
-// NewController creates a new Controller object with defaults:
-//
-// - A
-//
-// - B
+// NewController creates a new Controller object.
 func NewController(logger *zap.Logger, shadowData shared.ShadowData) *Controller {
 	return &Controller{
 		Logger:     logger,

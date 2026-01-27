@@ -15,28 +15,33 @@ import (
 )
 
 // Config holds parameters for worker setup:
-//
-// - ControllerIP is the IP address of the controller to connect to
-//
-// - ControllerPort is the port number of the controller to connect to
 type Config struct {
-	ControllerIP   string
+	// IP address of the controller to connect to
+	ControllerIP string
+
+	// Port number of the controller to connect to
 	ControllerPort int
 }
 
 // Worker is reponsible for receiving password cracking jobs from
 // the controller and sending the results back.
 type Worker struct {
+	// Public logger for sending log messages
 	Logger *zap.Logger
-	conn   net.Conn
+
+	conn net.Conn
 }
 
+// NewWorker creates a new worker with the provided logger instance.
 func NewWorker(logger *zap.Logger) *Worker {
 	return &Worker{
 		Logger: logger,
 	}
 }
 
+// SetupServer creates a connection with the controller.
+//
+// This will exit with an error if it failed to connect.
 func (w *Worker) SetupServer(config Config) {
 	address := net.JoinHostPort(config.ControllerIP, strconv.Itoa(config.ControllerPort))
 
@@ -116,6 +121,7 @@ func (w *Worker) cleanup() {
 	_ = w.conn.Close()
 }
 
+// HandleConnection handles worker lifecycle of sending and receiving to and from the controller.
 func (w *Worker) HandleConnection() {
 	encoder := gob.NewEncoder(w.conn)
 	decoder := gob.NewDecoder(w.conn)
