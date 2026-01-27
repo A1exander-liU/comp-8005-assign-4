@@ -6,11 +6,11 @@ const MessageVersion string = "1.0.0"
 type MessageType string
 
 const (
-	MessageRegistration         MessageType = "registration.request"
-	MessageRegistrationConfirma MessageType = "registration.confirm"
-	MessageJobDetails           MessageType = "job.details"
-	MessageJobResults           MessageType = "job.results"
-	MessageConnectionClose      MessageType = "connection.terminate"
+	MessageRegistration        MessageType = "registration.request"
+	MessageRegistrationConfirm MessageType = "registration.confirm"
+	MessageJobDetails          MessageType = "job.details"
+	MessageJobResults          MessageType = "job.results"
+	MessageConnectionClose     MessageType = "connection.terminate"
 )
 
 type ShadowData struct {
