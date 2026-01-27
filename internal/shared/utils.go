@@ -60,30 +60,28 @@ func checkPassword(decoder *crypt.Decoder, plaintext, hash string) bool {
 // - alphanumeric characters (a-z, A-Z, 0-9)
 //
 // - special characters: @ # % ^ & * ( ) _ + - = . , : ; ?
-func CrackPassword(decoder *crypt.Decoder, hash string, maxLength int) (string, error) {
-	characterSet := "abcdefgh"
+func CrackPassword(decoder *crypt.Decoder, hash string, characterSet string, length int) (string, error) {
 	characterSetLength := len(characterSet)
 
-	for length := 1; length <= maxLength; length++ {
-		total := 1
+	total := 1
 
-		for i := 0; i < length; i++ {
-			total *= characterSetLength
+	for range length {
+		total *= characterSetLength
+	}
+
+	for i := 0; i < total; i++ {
+		combination := make([]byte, length)
+		num := i
+
+		for pos := length - 1; pos >= 0; pos-- {
+			combination[pos] = characterSet[num%characterSetLength]
+			num /= characterSetLength
 		}
 
-		for i := 0; i < total; i++ {
-			combination := make([]byte, length)
-			num := i
-
-			for pos := length - 1; pos >= 0; pos-- {
-				combination[pos] = characterSet[num%characterSetLength]
-				num /= characterSetLength
-			}
-
-			testPassword := string(combination)
-			if checkPassword(decoder, testPassword, hash) {
-				return testPassword, nil
-			}
+		testPassword := string(combination)
+		fmt.Println("trying", testPassword)
+		if checkPassword(decoder, testPassword, hash) {
+			return testPassword, nil
 		}
 	}
 

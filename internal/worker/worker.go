@@ -60,7 +60,7 @@ func (w *Worker) sendRegistration(encoder *gob.Encoder) {
 	_ = encoder.Encode(m)
 }
 
-func (w *Worker) handleJob(shadowData shared.ShadowData) (string, error) {
+func (w *Worker) handleJob(shadowData shared.ShadowData, passwordData shared.PasswordData) (string, error) {
 	decoder, _ := crypt.NewDecoderAll()
 
 	sections := make([]string, 0)
@@ -79,7 +79,7 @@ func (w *Worker) handleJob(shadowData shared.ShadowData) (string, error) {
 
 	fullHash := strings.Join(sections, "$")
 
-	return shared.CrackPassword(decoder, fullHash, 3)
+	return shared.CrackPassword(decoder, fullHash, passwordData.SearchSpace, passwordData.PasswordLength)
 }
 
 func (w *Worker) sendJobResults(encoder *gob.Encoder, result string, err error) shared.Message {
@@ -142,7 +142,7 @@ func (w *Worker) HandleConnection() {
 			_ = encoder.Encode(toSend)
 		case shared.MessageJobDetails:
 			w.Logger.Info("Start cracking password")
-			result, err := w.handleJob(m.Data)
+			result, err := w.handleJob(m.Data, m.PasswordData)
 			toSend = w.sendJobResults(encoder, result, err)
 			w.sendTermination(encoder)
 		case shared.MessageConnectionClose:
