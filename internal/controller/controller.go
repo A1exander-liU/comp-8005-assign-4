@@ -12,6 +12,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// TODO: controller should send the search space to the worker instead
+
 // Config holds parameters for controller setup:
 //
 // - Shadowfile is the path to the shadowfile
@@ -86,8 +88,12 @@ func (c *Controller) sendRegistrationConfirmation(encoder *gob.Encoder) shared.M
 
 func (c *Controller) sendJob(encoder *gob.Encoder) shared.Message {
 	m := shared.Message{
-		Version: "1", Type: shared.MessageJobDetails, Message: "Cracking details",
+		Version: shared.MessageVersion, Type: shared.MessageJobDetails, Message: "Cracking details",
 		Data: c.shadowData,
+		PasswordData: shared.PasswordData{
+			SearchSpace:    shared.SearchSpace,
+			PasswordLength: 3,
+		},
 	}
 	_ = encoder.Encode(m)
 
