@@ -125,7 +125,7 @@ func (c *Controller) HandleConnection(conn net.Conn) {
 
 		if err := decoder.Decode(&m); err != nil {
 			c.Logger.Error("Failed to decode incoming message", zap.Error(err))
-			continue
+			return
 		}
 
 		c.Logger.Info("Received message",
@@ -152,6 +152,7 @@ func (c *Controller) HandleConnection(conn net.Conn) {
 			}
 			_ = encoder.Encode(toSend)
 			c.cleanup()
+			return
 		}
 
 		c.Logger.Info("Sent message",
