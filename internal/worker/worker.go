@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/A1exander-liU/comp-8005-assign-1/internal/shared"
+	"github.com/go-crypt/crypt"
 	"go.uber.org/zap"
 )
 
@@ -57,6 +58,44 @@ func (w *Worker) sendRegistration(encoder *gob.Encoder) {
 	_ = encoder.Encode(m)
 }
 
+func (w *Worker) handleJob(shadowData shared.ShadowData) (string, error) {
+	decoder, _ := crypt.NewDecoderAll()
+	return shared.CrackPassword(decoder, shadowData.Hash, 3)
+}
+
+func (w *Worker) sendJobResults(encoder *gob.Encoder, result string, err error) shared.Message {
+	toSend := shared.Message{
+		Version: shared.MessageVersion,
+		Type:    shared.MessageJobResults,
+	}
+
+	if err != nil {
+		w.Logger.Info("Failed to crack password")
+		toSend.Message = err.Error()
+	} else {
+		w.Logger.Info("Sucessfully cracked password")
+		toSend.Message = result
+	}
+
+	_ = encoder.Encode(toSend)
+
+	return toSend
+}
+
+func (w *Worker) sendTermination(encoder *gob.Encoder) {
+	m := shared.Message{
+		Version: shared.MessageVersion,
+		Type:    shared.MessageConnectionClose,
+		Message: "Sending termination request",
+	}
+
+	_ = encoder.Encode(m)
+}
+
+func (w *Worker) cleanup() {
+	_ = w.conn.Close()
+}
+
 func (w *Worker) HandleConnection() {
 	encoder := gob.NewEncoder(w.conn)
 	decoder := gob.NewDecoder(w.conn)
@@ -73,6 +112,28 @@ func (w *Worker) HandleConnection() {
 		w.Logger.Info("Received message",
 			zap.String("version", m.Version),
 			zap.String("message", m.Message),
+		)
+
+		var toSend shared.Message
+
+		switch m.Type {
+		case shared.MessageRegistrationConfirm:
+			toSend = shared.Message{Version: shared.MessageVersion, Type: shared.MessageRegistrationConfirm, Message: "Sucessfully received confirmation message"}
+			_ = encoder.Encode(toSend)
+		case shared.MessageJobDetails:
+			w.Logger.Info("Start cracking password")
+			result, err := w.handleJob(m.Data)
+			toSend = w.sendJobResults(encoder, result, err)
+			w.sendTermination(encoder)
+		case shared.MessageConnectionClose:
+			w.Logger.Info("Closing connection")
+			w.cleanup()
+			return
+		}
+
+		w.Logger.Info("Sent message",
+			zap.String("version", toSend.Version),
+			zap.String("message", toSend.Message),
 		)
 	}
 }
