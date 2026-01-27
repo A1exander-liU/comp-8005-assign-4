@@ -1,6 +1,8 @@
 // Package shared contains data types and functions used between the controller and worker
 package shared
 
+const MessageVersion string = "1.0.0"
+
 type MessageType string
 
 const (
@@ -16,7 +18,7 @@ type ShadowData struct {
 }
 
 type Message struct {
-	Type                     MessageType
-	Version, Result, Message string
-	Data                     ShadowData
+	Type             MessageType
+	Version, Message string
+	Data             ShadowData
 }
