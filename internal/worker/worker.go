@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/A1exander-liU/comp-8005-assign-1/internal/shared"
 	"github.com/go-crypt/crypt"
@@ -36,7 +38,7 @@ func NewWorker(logger *zap.Logger) *Worker {
 }
 
 func (w *Worker) SetupServer(config Config) {
-	address := net.JoinHostPort(config.ControllerIP, string(config.ControllerPort))
+	address := net.JoinHostPort(config.ControllerIP, strconv.Itoa(config.ControllerPort))
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
@@ -60,7 +62,24 @@ func (w *Worker) sendRegistration(encoder *gob.Encoder) {
 
 func (w *Worker) handleJob(shadowData shared.ShadowData) (string, error) {
 	decoder, _ := crypt.NewDecoderAll()
-	return shared.CrackPassword(decoder, shadowData.Hash, 3)
+
+	sections := make([]string, 0)
+	if shadowData.Algorithm != "" {
+		sections = append(sections, fmt.Sprintf("$%s", shadowData.Algorithm))
+	}
+	if shadowData.Parameters != "" {
+		sections = append(sections, shadowData.Parameters)
+	}
+	if shadowData.Salt != "" {
+		sections = append(sections, shadowData.Salt)
+	}
+	if shadowData.Hash != "" {
+		sections = append(sections, shadowData.Hash)
+	}
+
+	fullHash := strings.Join(sections, "$")
+
+	return shared.CrackPassword(decoder, fullHash, 3)
 }
 
 func (w *Worker) sendJobResults(encoder *gob.Encoder, result string, err error) shared.Message {
