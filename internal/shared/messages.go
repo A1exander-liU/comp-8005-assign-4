@@ -16,7 +16,7 @@ type ShadowData struct {
 }
 
 type Message struct {
-	Version, Type, Result string
-	Message               MessageType
-	Data                  ShadowData
+	Type                     MessageType
+	Version, Result, Message string
+	Data                     ShadowData
 }
