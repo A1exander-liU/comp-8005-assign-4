@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/A1exander-liU/comp-8005-assign-1/internal/shared"
 	"go.uber.org/zap"
@@ -26,8 +27,9 @@ type Config struct {
 // Controller is reponsible for managing worker connections
 // for sending and receiving password cracking jobs.
 type Controller struct {
-	Logger   *zap.Logger
-	listener net.Listener
+	Logger     *zap.Logger
+	listener   net.Listener
+	shadowData shared.ShadowData
 }
 
 // NewController creates a new Controller object with defaults:
@@ -35,9 +37,10 @@ type Controller struct {
 // - A
 //
 // - B
-func NewController(logger *zap.Logger) *Controller {
+func NewController(logger *zap.Logger, shadowData shared.ShadowData) *Controller {
 	return &Controller{
-		Logger: logger,
+		Logger:     logger,
+		shadowData: shadowData,
 	}
 }
 
@@ -65,6 +68,52 @@ func (c *Controller) AcceptConnection() (net.Conn, error) {
 	return c.listener.Accept()
 }
 
+func (c *Controller) handleRegistration(conn net.Conn) {
+	c.Logger.Info("New worker connected", zap.String("address", conn.RemoteAddr().String()))
+}
+
+func (c *Controller) sendRegistrationConfirmation(encoder *gob.Encoder) shared.Message {
+	m := shared.Message{
+		Version: shared.MessageVersion,
+		Type:    shared.MessageRegistrationConfirm,
+		Message: "Sending registration confirmation",
+	}
+
+	_ = encoder.Encode(m)
+
+	return m
+}
+
+func (c *Controller) sendJob(encoder *gob.Encoder) shared.Message {
+	m := shared.Message{
+		Version: "1", Type: shared.MessageJobDetails, Message: "Cracking details",
+		Data: c.shadowData,
+	}
+	_ = encoder.Encode(m)
+
+	return m
+}
+
+func (c *Controller) handleJobResults(m shared.Message) (string, bool) {
+	if strings.Contains(m.Message, "failed to crack") {
+		return m.Message, false
+	}
+
+	return m.Message, true
+}
+
+func (c *Controller) displayJobResults(result string, cracked bool) {
+	if !cracked {
+		c.Logger.Info("Failed to crack password", zap.String("message", result))
+	} else {
+		c.Logger.Info("Cracked password", zap.String("message", result))
+	}
+}
+
+func (c *Controller) cleanup() {
+	_ = c.Logger.Sync()
+}
+
 // HandleConnection manages communication with a single worker for the
 // whole entire lifecycle.
 func (c *Controller) HandleConnection(conn net.Conn) {
@@ -84,9 +133,30 @@ func (c *Controller) HandleConnection(conn net.Conn) {
 			zap.String("message", m.Message),
 		)
 
-		_ = encoder.Encode(shared.Message{
-			Version: "1", Message: fmt.Sprintf("Received message: %s", m.Message),
-		})
+		var toSend shared.Message
 
+		switch m.Type {
+		case shared.MessageRegistration:
+			c.handleRegistration(conn)
+			toSend = c.sendRegistrationConfirmation(encoder)
+		case shared.MessageRegistrationConfirm:
+			toSend = c.sendJob(encoder)
+		case shared.MessageJobResults:
+			result, cracked := c.handleJobResults(m)
+			c.displayJobResults(result, cracked)
+		case shared.MessageConnectionClose:
+			toSend = shared.Message{
+				Version: shared.MessageVersion,
+				Type:    shared.MessageConnectionClose,
+				Message: "Confirming connection close",
+			}
+			_ = encoder.Encode(toSend)
+			c.cleanup()
+		}
+
+		c.Logger.Info("Sent message",
+			zap.String("version", toSend.Version),
+			zap.String("message", toSend.Message),
+		)
 	}
 }

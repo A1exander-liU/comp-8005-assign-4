@@ -90,7 +90,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	controller := controller.NewController(logger)
+	controller := controller.NewController(logger, shadowData)
 	controller.SetupServer(config.Port)
 
 	for {

@@ -93,6 +93,7 @@ func (w *Worker) sendTermination(encoder *gob.Encoder) {
 }
 
 func (w *Worker) cleanup() {
+	_ = w.Logger.Sync()
 	_ = w.conn.Close()
 }
 
