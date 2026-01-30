@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-1/internal/controller"
 	"github.com/A1exander-liU/comp-8005-assign-1/internal/shared"
@@ -75,22 +76,23 @@ func parseArguments() controller.Config {
 }
 
 func main() {
-	logger, _ := zap.NewDevelopment()
-	defer logger.Sync().Error()
-
-	config := parseArguments()
-	handleArguments(&config)
-
-	shadowData := parseShadowfile(config.Shadowfile, config.Username)
-	fmt.Println(shadowData)
-
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		fmt.Println("Failed to create logger:", err)
 		os.Exit(1)
 	}
+	controller := controller.NewController(logger, shared.ShadowData{})
 
-	controller := controller.NewController(logger, shadowData)
+	controller.Logger.Info("Started parsing")
+	controller.Timing.Parse = time.Now()
+	config := parseArguments()
+	handleArguments(&config)
+
+	shadowData := parseShadowfile(config.Shadowfile, config.Username)
+	logger.Info("Finished parsing")
+	controller.Timing.ParseDone = time.Since(controller.Timing.Parse)
+	controller.ShadowData = shadowData
+
 	controller.SetupServer(config.Port)
 
 	for {

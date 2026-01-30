@@ -1,6 +1,8 @@
 // Package shared contains data types and functions used between the controller and worker.
 package shared
 
+import "time"
+
 const (
 	MessageVersion string = "1.0.0"
 	SearchSpace    string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#%^&*()_+-=.,:;?"
@@ -61,4 +63,23 @@ type Message struct {
 
 	// Password cracking details for the worker
 	PasswordData PasswordData
+
+	Time time.Duration
+}
+
+type (
+	HeaderType string
+	BodyType   string
+)
+
+// Payload aaass
+type Payload struct {
+	// TODO: can you send type information over network in order to
+	// construct to parse the bytes into the correct type?
+	SenderID   string     // ID of the sender
+	ReceiverID string     // ID of the receiver
+	HeaderType HeaderType // Specifies the type of communication
+	Message    string     // (OPTIONAL) Extra description to be included
+	BodyType   BodyType   // (OPTIONAL) Specifies the format of the body
+	Body       []byte     // (OPTIONAL) Primary content of the message
 }

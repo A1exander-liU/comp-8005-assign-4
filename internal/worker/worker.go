@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-1/internal/shared"
 	"github.com/go-crypt/crypt"
@@ -87,10 +88,11 @@ func (w *Worker) handleJob(shadowData shared.ShadowData, passwordData shared.Pas
 	return shared.CrackPassword(decoder, fullHash, passwordData.SearchSpace, passwordData.PasswordLength)
 }
 
-func (w *Worker) sendJobResults(encoder *gob.Encoder, result string, err error) shared.Message {
+func (w *Worker) sendJobResults(encoder *gob.Encoder, result string, err error, crackTime time.Duration) shared.Message {
 	toSend := shared.Message{
 		Version: shared.MessageVersion,
 		Type:    shared.MessageJobResults,
+		Time:    crackTime,
 	}
 
 	if err != nil {
@@ -121,6 +123,9 @@ func (w *Worker) cleanup() {
 	_ = w.conn.Close()
 }
 
+// TODO: refactor message handling and format
+// need also way to time the code (use channels or just a time.now between segments)
+
 // HandleConnection handles worker lifecycle of sending and receiving to and from the controller.
 func (w *Worker) HandleConnection() {
 	encoder := gob.NewEncoder(w.conn)
@@ -148,8 +153,10 @@ func (w *Worker) HandleConnection() {
 			_ = encoder.Encode(toSend)
 		case shared.MessageJobDetails:
 			w.Logger.Info("Start cracking password")
+			start := time.Now()
 			result, err := w.handleJob(m.Data, m.PasswordData)
-			toSend = w.sendJobResults(encoder, result, err)
+			crackTime := time.Since(start)
+			toSend = w.sendJobResults(encoder, result, err, crackTime)
 			w.sendTermination(encoder)
 		case shared.MessageConnectionClose:
 			w.Logger.Info("Closing connection")

@@ -79,7 +79,6 @@ func CrackPassword(decoder *crypt.Decoder, hash string, characterSet string, len
 		}
 
 		testPassword := string(combination)
-		fmt.Println("trying", testPassword)
 		if checkPassword(decoder, testPassword, hash) {
 			return testPassword, nil
 		}
