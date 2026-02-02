@@ -127,11 +127,11 @@ func (c *Controller) cleanup() {
 	returnTime := float64(c.Timing.ReturnDone.Microseconds()) / 1000
 
 	c.Logger.Info("Timing information",
-		zap.String("total", fmt.Sprintf("%dms", c.Timing.TotalDone.Milliseconds())),
 		zap.String("parse", fmt.Sprintf("%fms", parseTime)),
 		zap.String("dispatch", fmt.Sprintf("%fms", dispatchTime)),
 		zap.String("crack", fmt.Sprintf("%dms", c.Timing.CrackDone.Milliseconds())),
 		zap.String("return", fmt.Sprintf("%fms", returnTime)),
+		zap.String("total", fmt.Sprintf("%dms", c.Timing.TotalDone.Milliseconds())),
 	)
 	_ = c.Logger.Sync()
 }
