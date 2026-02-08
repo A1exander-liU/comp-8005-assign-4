@@ -67,19 +67,39 @@ type Message struct {
 	Time time.Duration
 }
 
-type (
-	HeaderType string
-	BodyType   string
-)
+// Request holds fields to be used across all request types
+type Request struct {
+	Type      MessageType
+	SenderID  string
+	Timestamp time.Time
+	Message   string
+}
 
-// Payload aaass
-type Payload struct {
-	// TODO: can you send type information over network in order to
-	// construct to parse the bytes into the correct type?
-	SenderID   string     // ID of the sender
-	ReceiverID string     // ID of the receiver
-	HeaderType HeaderType // Specifies the type of communication
-	Message    string     // (OPTIONAL) Extra description to be included
-	BodyType   BodyType   // (OPTIONAL) Specifies the format of the body
-	Body       []byte     // (OPTIONAL) Primary content of the message
+// JobDetailsRequest holds fields for password cracking details
+type JobDetailsRequest struct {
+	R Request
+
+	PasswordUsername   string
+	PasswordAlgorithm  string
+	PasswordParameters string
+	PasswordSalt       string
+	PasswordHash       string
+
+	SearchSpace    string
+	PasswordLength int
+}
+
+// Response holds fields to be used across all response types
+type Response struct {
+	Type      MessageType
+	SenderID  string
+	Timestamp time.Time
+	Message   string
+	IsError   bool
+}
+
+// JobDetailsResponse holds fields to be used for sending job results
+type JobDetailsResponse struct {
+	R        Response
+	Password string
 }
