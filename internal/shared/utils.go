@@ -47,9 +47,12 @@ func ParseHash(hash string) (ShadowData, error) {
 	}
 }
 
-func checkPassword(decoder *crypt.Decoder, plaintext, hash string) bool {
-	digest, _ := decoder.Decode(hash)
-	return digest.Match(plaintext)
+func checkPassword(decoder *crypt.Decoder, plaintext, hash string) (bool, error) {
+	digest, err := decoder.Decode(hash)
+	if err != nil {
+		return false, err
+	}
+	return digest.Match(plaintext), nil
 }
 
 // CrackPassword tries all permutations of passwords up to `maxLength`. Returns
@@ -79,7 +82,11 @@ func CrackPassword(decoder *crypt.Decoder, hash string, characterSet string, len
 		}
 
 		testPassword := string(combination)
-		if checkPassword(decoder, testPassword, hash) {
+		cracked, err := checkPassword(decoder, testPassword, hash)
+		if err != nil {
+			return "", errors.New("failed to crack the password")
+		}
+		if cracked {
 			return testPassword, nil
 		}
 	}
