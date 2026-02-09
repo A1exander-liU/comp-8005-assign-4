@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -16,7 +17,9 @@ type Router struct {
 	ID       string
 	l        *zap.Logger
 	handlers map[MessageType]Handler
-	conn     net.Conn
+
+	conn net.Conn
+	mu   sync.Mutex
 
 	encoder *gob.Encoder
 	decoder *gob.Decoder
@@ -51,6 +54,13 @@ func (r *Router) dispatch(m Message) (Message, error) {
 	return h(m, r.conn)
 }
 
+// safe send that utilises mutex
+func (r *Router) send(m Message) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.encoder.Encode(m)
+}
+
 // Handle registers a function to be called when a message with the corresponding type is sent.
 //
 // Registering another handler with the same type will overwrite the existing one, only one handler
@@ -81,7 +91,7 @@ func (r *Router) Start() error {
 
 		res, _ := r.dispatch(message)
 
-		err = r.encoder.Encode(res)
+		err = r.send(res)
 		if res.Type == MessageClose {
 			r.l.Info("Connection closed")
 			r.done <- true
