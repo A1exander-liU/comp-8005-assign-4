@@ -15,16 +15,12 @@ const (
 type MessageType string
 
 const (
-	MessageRegistration        MessageType = "registration.request"
-	MessageRegistrationConfirm MessageType = "registration.confirm"
-	MessageJobDetails          MessageType = "job.details"
-	MessageJobResults          MessageType = "job.results"
-	MessageConnectionClose     MessageType = "connection.terminate"
-	MessageRegister            MessageType = "connection.register"
-	MessageData                MessageType = "connection.data"
-	MessageHeartbeat           MessageType = "connection.heartbeat"
-	MessageError               MessageType = "connection.error"
-	MessageClose               MessageType = "connection.close"
+	MessageJobDetails MessageType = "job.details"
+	MessageJobResults MessageType = "job.results"
+	MessageRegister   MessageType = "connection.register"
+	MessageHeartbeat  MessageType = "connection.heartbeat"
+	MessageError      MessageType = "connection.error"
+	MessageClose      MessageType = "connection.close"
 )
 
 type Message struct {
