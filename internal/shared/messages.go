@@ -1,7 +1,10 @@
 // Package shared contains data types and functions used between the controller and worker.
 package shared
 
-import "time"
+import (
+	"encoding/gob"
+	"time"
+)
 
 const (
 	MessageVersion string = "1.0.0"
@@ -17,89 +20,53 @@ const (
 	MessageJobDetails          MessageType = "job.details"
 	MessageJobResults          MessageType = "job.results"
 	MessageConnectionClose     MessageType = "connection.terminate"
+	MessageRegister            MessageType = "connection.register"
+	MessageData                MessageType = "connection.data"
+	MessageHeartbeat           MessageType = "connection.heartbeat"
+	MessageError               MessageType = "connection.error"
+	MessageClose               MessageType = "connection.close"
 )
 
-// ShadowData contains extracted information of a single user and
-// password in the shadowfile.
-type ShadowData struct {
-	// user's name
-	Username string
-
-	// Algorithm used to generate the password hash
-	Algorithm string
-
-	// Optional parameters to supply to the hashing function
-	Parameters string
-
-	// Salt to supply to the hashing function
-	Salt string
-
-	// The hash of the password
-	Hash string
-}
-
-// PasswordData contains cracking details for the worker.
-type PasswordData struct {
-	// The entire character set the worker should try when cracking
-	SearchSpace string
-
-	// The length of the password
-	PasswordLength int
-}
-
-// Message is the communication protocol between the controller and worker.
 type Message struct {
-	// Type of communication the controller or worker wants to send
-	Type MessageType
-
-	// Protocol version to use (in semantic versioning scheme)
-	Version string
-
-	// An additional message to send
-	Message string
-
-	// Extracted information from shadowfile for whose password to crack
-	Data ShadowData
-
-	// Password cracking details for the worker
-	PasswordData PasswordData
-
-	Time time.Duration
-}
-
-// Request holds fields to be used across all request types
-type Request struct {
+	Version   string
+	ID        string
 	Type      MessageType
-	SenderID  string
 	Timestamp time.Time
 	Message   string
+	Payload   any
+}
+type ShadowData struct {
+	Username, Algorithm, Parameters, Salt, Hash string
 }
 
-// JobDetailsRequest holds fields for password cracking details
-type JobDetailsRequest struct {
-	R Request
-
-	PasswordUsername   string
-	PasswordAlgorithm  string
-	PasswordParameters string
-	PasswordSalt       string
-	PasswordHash       string
-
+type PayloadJobDetails struct {
+	// Password hash details
+	Username, Algorithm, Parameters, Salt, Hash string
+	// A string of individual for the worker to generate candidate passwords from
 	SearchSpace    string
 	PasswordLength int
 }
 
-// Response holds fields to be used across all response types
-type Response struct {
-	Type      MessageType
-	SenderID  string
-	Timestamp time.Time
-	Message   string
-	IsError   bool
+type PayloadJobResults struct {
+	// The cracked password, will be empty if cracking failed
+	Password string
 }
 
-// JobDetailsResponse holds fields to be used for sending job results
-type JobDetailsResponse struct {
-	R        Response
-	Password string
+type PayloadHearbeat struct {
+	// Number of password candidates tested since last heartbeat
+	DeltaTested int
+
+	// Number of threads currently utilised by the worker for password cracking
+	ActiveThreads int
+
+	// Current cracking attempts/sec since last heartbeat
+	CurrentRate float64
+}
+
+// RegisterMessages registers the message structs to enable decoding of any types.
+//
+// Should be called before attempting to send messages.
+func RegisterMessages() {
+	gob.Register(PayloadJobResults{})
+	gob.Register(PayloadHearbeat{})
 }

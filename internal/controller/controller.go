@@ -2,21 +2,14 @@
 package controller
 
 import (
-	"encoding/gob"
 	"fmt"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-1/internal/shared"
 	"go.uber.org/zap"
 )
-
-type Timing struct {
-	Parse, Dispatch, Crack, Return, Total                     time.Time
-	ParseDone, DispatchDone, CrackDone, ReturnDone, TotalDone time.Duration
-}
 
 // Config holds parameters for controller setup.
 type Config struct {
@@ -30,16 +23,23 @@ type Config struct {
 	Port int
 }
 
+type workerConnection struct {
+	Registered bool
+
+	Conn   net.Conn
+	Router *shared.Router
+}
+
 // Controller is reponsible for managing worker connections
 // for sending and receiving password cracking jobs.
 type Controller struct {
 	// Public logger for sending log messages
 	Logger *zap.Logger
 
-	listener   net.Listener
-	ShadowData shared.ShadowData
+	listener net.Listener
+	workers  map[string]*workerConnection
 
-	Timing Timing
+	ShadowData shared.ShadowData
 }
 
 // NewController creates a new Controller object.
@@ -47,7 +47,8 @@ func NewController(logger *zap.Logger, shadowData shared.ShadowData) *Controller
 	return &Controller{
 		Logger:     logger,
 		ShadowData: shadowData,
-		Timing:     Timing{},
+
+		workers: map[string]*workerConnection{},
 	}
 }
 
@@ -75,42 +76,63 @@ func (c *Controller) AcceptConnection() (net.Conn, error) {
 	return c.listener.Accept()
 }
 
-func (c *Controller) handleRegistration(conn net.Conn) {
-	c.Logger.Info("New worker connected", zap.String("address", conn.RemoteAddr().String()))
-}
-
-func (c *Controller) sendRegistrationConfirmation(encoder *gob.Encoder) shared.Message {
-	m := shared.Message{
-		Version: shared.MessageVersion,
-		Type:    shared.MessageRegistrationConfirm,
-		Message: "Sending registration confirmation",
+func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared.Message, error) {
+	id := conn.RemoteAddr().String()
+	ok := c.workers[id].Registered
+	if ok {
+		err := fmt.Errorf("worker %s is already registered", id)
+		return shared.Message{ID: id, Type: shared.MessageError, Timestamp: time.Now(), Message: err.Error()}, err
 	}
 
-	_ = encoder.Encode(m)
+	c.workers[id].Registered = true
 
-	return m
+	return shared.Message{ID: id, Type: shared.MessageRegister, Timestamp: time.Now(), Message: "Registration successful"}, nil
 }
 
-func (c *Controller) sendJob(encoder *gob.Encoder) shared.Message {
-	m := shared.Message{
+func (c *Controller) sendJob(_ shared.Message, _ net.Conn) (shared.Message, error) {
+	res := shared.Message{
 		Version: shared.MessageVersion, Type: shared.MessageJobDetails, Message: "Cracking details",
-		Data: c.ShadowData,
-		PasswordData: shared.PasswordData{
+		Timestamp: time.Now(),
+		Payload: shared.PayloadJobDetails{
+			Algorithm:      c.ShadowData.Algorithm,
+			Parameters:     c.ShadowData.Parameters,
+			Salt:           c.ShadowData.Salt,
+			Hash:           c.ShadowData.Hash,
 			SearchSpace:    shared.SearchSpace,
 			PasswordLength: 3,
 		},
 	}
-	_ = encoder.Encode(m)
 
-	return m
+	return res, nil
 }
 
-func (c *Controller) handleJobResults(m shared.Message) (string, bool) {
-	if strings.Contains(m.Message, "failed to crack") {
-		return m.Message, false
+func (c *Controller) handleJobResults(m shared.Message, _ net.Conn) (shared.Message, error) {
+	payload, ok := m.Payload.(shared.PayloadJobResults)
+	if !ok {
+		return shared.Message{Version: shared.MessageVersion, Type: shared.MessageJobResults, Message: "Bad payload"}, nil
 	}
 
-	return m.Message, true
+	res := shared.Message{
+		Version:   shared.MessageVersion,
+		Type:      shared.MessageJobResults,
+		Message:   "Received message details",
+		Timestamp: time.Now(),
+	}
+
+	c.displayJobResults(payload.Password, len(payload.Password) > 0)
+
+	return res, nil
+}
+
+func (c *Controller) handleClose(_ shared.Message, conn net.Conn) (shared.Message, error) {
+	id := conn.RemoteAddr().String()
+	_, ok := c.workers[id]
+	if ok {
+		delete(c.workers, id)
+	}
+
+	message := fmt.Sprintf("Closing connection for %s", id)
+	return shared.Message{ID: id, Type: shared.MessageClose, Timestamp: time.Now(), Message: message}, nil
 }
 
 func (c *Controller) displayJobResults(result string, cracked bool) {
@@ -121,73 +143,21 @@ func (c *Controller) displayJobResults(result string, cracked bool) {
 	}
 }
 
-func (c *Controller) cleanup() {
-	parseTime := float64(c.Timing.ParseDone.Microseconds()) / 1000
-	dispatchTime := float64(c.Timing.DispatchDone.Microseconds()) / 1000
-	returnTime := float64(c.Timing.ReturnDone.Microseconds()) / 1000
-
-	c.Logger.Info("Timing information",
-		zap.String("parse", fmt.Sprintf("%fms", parseTime)),
-		zap.String("dispatch", fmt.Sprintf("%fms", dispatchTime)),
-		zap.String("crack", fmt.Sprintf("%dms", c.Timing.CrackDone.Milliseconds())),
-		zap.String("return", fmt.Sprintf("%fms", returnTime)),
-		zap.String("total", fmt.Sprintf("%dms", c.Timing.TotalDone.Milliseconds())),
-	)
-	_ = c.Logger.Sync()
-}
-
 // HandleConnection manages communication with a single worker for the
 // whole entire lifecycle.
 func (c *Controller) HandleConnection(conn net.Conn) {
-	encoder := gob.NewEncoder(conn)
-	decoder := gob.NewDecoder(conn)
+	r := shared.NewRouter(c.Logger, conn)
+	r.Handle(shared.MessageRegister, c.handleRegistration)
+	r.Handle(shared.MessageJobDetails, c.sendJob)
+	r.Handle(shared.MessageJobResults, c.handleJobResults)
+	r.Handle(shared.MessageClose, c.handleClose)
 
-	for {
-		var m shared.Message
+	c.workers[conn.RemoteAddr().String()] = &workerConnection{
+		Registered: false,
+		Conn:       conn, Router: r,
+	}
 
-		if err := decoder.Decode(&m); err != nil {
-			c.Logger.Error("Failed to decode incoming message", zap.Error(err))
-			return
-		}
-
-		c.Logger.Info("Received message",
-			zap.String("version", m.Version),
-			zap.String("message", m.Message),
-		)
-
-		var toSend shared.Message
-
-		switch m.Type {
-		case shared.MessageRegistration:
-			c.Timing.Total = time.Now()
-			c.Timing.Dispatch = time.Now()
-			c.handleRegistration(conn)
-			toSend = c.sendRegistrationConfirmation(encoder)
-		case shared.MessageRegistrationConfirm:
-			toSend = c.sendJob(encoder)
-			c.Timing.DispatchDone = time.Since(c.Timing.Dispatch)
-			c.Timing.Crack = time.Now()
-			c.Timing.Return = time.Now()
-		case shared.MessageJobResults:
-			result, cracked := c.handleJobResults(m)
-			c.Timing.CrackDone = m.Time
-			c.Timing.ReturnDone = time.Since(c.Timing.Return) - m.Time
-			c.displayJobResults(result, cracked)
-		case shared.MessageConnectionClose:
-			toSend = shared.Message{
-				Version: shared.MessageVersion,
-				Type:    shared.MessageConnectionClose,
-				Message: "Confirming connection close",
-			}
-			_ = encoder.Encode(toSend)
-			c.Timing.TotalDone = time.Since(c.Timing.Total)
-			c.cleanup()
-			return
-		}
-
-		c.Logger.Info("Sent message",
-			zap.String("version", toSend.Version),
-			zap.String("message", toSend.Message),
-		)
+	if err := r.Start(); err != nil {
+		c.Logger.Error(err.Error())
 	}
 }

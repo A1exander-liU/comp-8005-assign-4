@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-1/internal/controller"
 	"github.com/A1exander-liU/comp-8005-assign-1/internal/shared"
@@ -84,13 +83,11 @@ func main() {
 	controller := controller.NewController(logger, shared.ShadowData{})
 
 	controller.Logger.Info("Started parsing")
-	controller.Timing.Parse = time.Now()
 	config := parseArguments()
 	handleArguments(&config)
 
 	shadowData := parseShadowfile(config.Shadowfile, config.Username)
 	logger.Info("Finished parsing")
-	controller.Timing.ParseDone = time.Since(controller.Timing.Parse)
 	controller.ShadowData = shadowData
 
 	controller.SetupServer(config.Port)
