@@ -42,6 +42,8 @@ func parseArguments() worker.Config {
 }
 
 func main() {
+	shared.RegisterMessages()
+
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		fmt.Println("Failed to create logger:", err)

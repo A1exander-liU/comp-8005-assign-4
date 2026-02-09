@@ -46,6 +46,7 @@ type PayloadJobDetails struct {
 type PayloadJobResults struct {
 	// The cracked password, will be empty if cracking failed
 	Password string
+	Time     time.Duration
 }
 
 type PayloadHearbeat struct {
@@ -64,5 +65,6 @@ type PayloadHearbeat struct {
 // Should be called before attempting to send messages.
 func RegisterMessages() {
 	gob.Register(PayloadJobResults{})
+	gob.Register(PayloadJobDetails{})
 	gob.Register(PayloadHearbeat{})
 }
