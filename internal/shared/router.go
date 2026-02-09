@@ -80,14 +80,14 @@ func (r *Router) Start() error {
 		r.l.Info("Received", zap.String("id", message.ID), zap.String("message", message.Message), zap.Time("timestamp", message.Timestamp))
 
 		res, _ := r.dispatch(message)
+
+		err = r.encoder.Encode(res)
 		if res.Type == MessageClose {
 			r.l.Info("Connection closed")
 			r.done <- true
 			close(r.done)
 			return r.conn.Close()
 		}
-
-		err = r.encoder.Encode(res)
 		if err != nil {
 			return err
 		}
