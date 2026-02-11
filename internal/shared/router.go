@@ -54,8 +54,10 @@ func (r *Router) dispatch(m Message) (Message, error) {
 	return h(m, r.conn)
 }
 
-// safe send that utilises mutex
-func (r *Router) send(m Message) error {
+// Send utilises a mutex to send messages in a thread-safe manner.
+//
+// Can be used to independently send messages from the router.
+func (r *Router) Send(m Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.encoder.Encode(m)
@@ -65,6 +67,8 @@ func (r *Router) send(m Message) error {
 //
 // Registering another handler with the same type will overwrite the existing one, only one handler
 // of a type can exist.
+//
+// Return an empty message 'Message{}' if the handler is not expected to send a response back.
 func (r *Router) Handle(m MessageType, h Handler) {
 	r.handlers[m] = h
 }
@@ -90,8 +94,11 @@ func (r *Router) Start() error {
 		r.l.Info("Received", zap.String("id", message.ID), zap.String("message", message.Message), zap.Time("timestamp", message.Timestamp))
 
 		res, _ := r.dispatch(message)
+		if res == (Message{}) {
+			continue
+		}
 
-		err = r.send(res)
+		err = r.Send(res)
 		if res.Type == MessageClose {
 			r.l.Info("Connection closed")
 			r.done <- true
