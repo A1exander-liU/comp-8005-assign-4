@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/A1exander-liU/comp-8005-assign-1/internal/shared"
-	"github.com/A1exander-liU/comp-8005-assign-1/internal/worker"
+	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
+	"github.com/A1exander-liU/comp-8005-assign-2/internal/worker"
 	"go.uber.org/zap"
 )
 

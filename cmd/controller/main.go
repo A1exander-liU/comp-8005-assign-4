@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/A1exander-liU/comp-8005-assign-1/internal/controller"
-	"github.com/A1exander-liU/comp-8005-assign-1/internal/shared"
+	"github.com/A1exander-liU/comp-8005-assign-2/internal/controller"
+	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 	"go.uber.org/zap"
 )
 

@@ -1,4 +1,4 @@
-module github.com/A1exander-liU/comp-8005-assign-1
+module github.com/A1exander-liU/comp-8005-assign-2
 
 go 1.25.1
 
