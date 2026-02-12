@@ -47,6 +47,7 @@ type PayloadJobResults struct {
 	// The cracked password, will be empty if cracking failed
 	Password string
 	Time     time.Duration
+	Err      error
 }
 
 type PayloadHearbeat struct {

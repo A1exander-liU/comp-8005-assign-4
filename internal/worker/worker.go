@@ -135,12 +135,14 @@ func (w *Worker) sendJobResults(result string, err error, crackTime time.Duratio
 		m.Message = fmt.Sprintf("Sending job results: %s", err.Error())
 		jobResults.Password = ""
 		jobResults.Time = crackTime
+		jobResults.Err = err
 	} else {
 		w.Logger.Info("Sucessfully cracked password")
 
 		m.Message = "Sending job results: Password cracked"
 		jobResults.Password = result
 		jobResults.Time = crackTime
+		jobResults.Err = nil
 	}
 	m.Payload = jobResults
 
