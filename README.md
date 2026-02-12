@@ -1,4 +1,4 @@
-# COMP 8005 - Assignment 1
+# COMP 8005 - Assignment 2
 
 # Structure
 
@@ -18,7 +18,7 @@ internal/             # lib
 ```bash
 ./build.sh
 
-./build/controller ..args
+./build/controller ...args
 ./build/worker ...args
 ```
 
