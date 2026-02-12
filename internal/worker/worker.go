@@ -36,14 +36,6 @@ type doneResp struct {
 	err      error
 }
 
-// Report back cracking results (once all are done)
-type resultResp struct {
-	found     bool
-	password  string
-	err       error
-	crackTime time.Duration
-}
-
 // Worker is reponsible for receiving password cracking jobs from
 // the controller and sending the results back.
 type Worker struct {
@@ -61,7 +53,6 @@ type Worker struct {
 
 	totalAttempts    int
 	lastAttemptsSent int
-	finished         chan resultResp
 	mu               sync.Mutex
 }
 
@@ -70,7 +61,6 @@ func NewWorker(logger *zap.Logger) *Worker {
 	return &Worker{
 		Logger:        logger,
 		totalAttempts: 0,
-		finished:      make(chan resultResp, 1),
 	}
 }
 
