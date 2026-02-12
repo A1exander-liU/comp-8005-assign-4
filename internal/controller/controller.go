@@ -153,7 +153,6 @@ func (c *Controller) handleHeartbeat(m shared.Message, conn net.Conn) (shared.Me
 	c.Logger.Info("Heartbeat info",
 		zap.Int("delta", payload.DeltaTested),
 		zap.Int("activeThreads", payload.ActiveThreads),
-		zap.Float64("rate", payload.CurrentRate),
 	)
 
 	return shared.Message{}, nil

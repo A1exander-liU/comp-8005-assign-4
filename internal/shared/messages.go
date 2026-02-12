@@ -55,9 +55,6 @@ type PayloadHearbeat struct {
 
 	// Number of threads currently utilised by the worker for password cracking
 	ActiveThreads int
-
-	// Current cracking attempts/sec since last heartbeat
-	CurrentRate float64
 }
 
 // RegisterMessages registers the message structs to enable decoding of any types.
