@@ -128,7 +128,7 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 		Timestamp: time.Now(),
 	}
 
-	c.displayJobResults(payload.Password, len(payload.Password) > 0)
+	c.displayJobResults(payload.Password, len(payload.Password) > 0, payload.Time)
 
 	return res, nil
 }
@@ -144,11 +144,11 @@ func (c *Controller) handleClose(_ shared.Message, conn net.Conn) (shared.Messag
 	return shared.Message{ID: id, Type: shared.MessageClose, Timestamp: time.Now(), Message: message}, nil
 }
 
-func (c *Controller) displayJobResults(result string, cracked bool) {
+func (c *Controller) displayJobResults(result string, cracked bool, time time.Duration) {
 	if !cracked {
-		c.Logger.Info("JOB RESULTS: Failed to crack password", zap.String("password", result))
+		c.Logger.Info("JOB RESULTS: Failed to crack password")
 	} else {
-		c.Logger.Info("JOB RESULTS: Cracked password", zap.String("password", result))
+		c.Logger.Info("JOB RESULTS: Cracked password", zap.String("password", result), zap.Duration("crack_time", time))
 	}
 }
 
