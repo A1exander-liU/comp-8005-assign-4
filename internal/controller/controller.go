@@ -116,9 +116,6 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 		return shared.Message{Version: shared.MessageVersion, Type: shared.MessageError, Message: "Bad payload"}, nil
 	}
 
-	id := conn.RemoteAddr().String()
-	c.workers[id].Done <- true
-
 	res := shared.Message{
 		Version:   shared.MessageVersion,
 		Type:      shared.MessageJobResults,
@@ -144,9 +141,9 @@ func (c *Controller) handleClose(_ shared.Message, conn net.Conn) (shared.Messag
 
 func (c *Controller) displayJobResults(result string, cracked bool) {
 	if !cracked {
-		c.Logger.Info("Failed to crack password", zap.String("message", result))
+		c.Logger.Info("JOB RESULTS: Failed to crack password", zap.String("password", result))
 	} else {
-		c.Logger.Info("Cracked password", zap.String("message", result))
+		c.Logger.Info("JOB RESULTS: Cracked password", zap.String("password", result))
 	}
 }
 

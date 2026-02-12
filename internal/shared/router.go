@@ -91,7 +91,7 @@ func (r *Router) Start() error {
 			return err
 		}
 
-		r.l.Info("Router Received", zap.String("id", message.ID), zap.String("message", message.Message), zap.Time("timestamp", message.Timestamp))
+		r.l.Info("Received", zap.String("id", message.ID), zap.String("message", message.Message), zap.Time("timestamp", message.Timestamp))
 
 		res, _ := r.dispatch(message)
 		if res == (Message{}) {
