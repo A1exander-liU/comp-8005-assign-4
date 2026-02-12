@@ -55,6 +55,56 @@ func checkPassword(decoder *crypt.Decoder, plaintext, hash string) (bool, error)
 	return digest.Match(plaintext), nil
 }
 
+func PartitionArray(array []string, count int) [][]string {
+	partitions := [][]string{}
+	arrayLength := len(array)
+
+	partitionSize := arrayLength / count
+
+	for i := range count {
+		start := i * partitionSize
+		end := start + partitionSize
+		partitions = append(partitions, array[start:end])
+	}
+
+	num := 0
+	for i := count * partitionSize; i < arrayLength; i++ {
+		partitions[num%count] = append(partitions[num%count], array[i])
+		num += 1
+	}
+
+	return partitions
+}
+
+// GenerateCandidatePasswords creates all possible passwords of the given length
+// and character set.
+func GenerateCandidatePasswords(characterSet string, length int) []string {
+	candidates := []string{}
+
+	characterSetLength := len(characterSet)
+
+	total := 1
+
+	for range length {
+		total *= characterSetLength
+	}
+
+	for i := 0; i < total; i++ {
+		combination := make([]byte, length)
+		num := i
+
+		for pos := length - 1; pos >= 0; pos-- {
+			combination[pos] = characterSet[num%characterSetLength]
+			num /= characterSetLength
+		}
+
+		testPassword := string(combination)
+		candidates = append(candidates, testPassword)
+	}
+
+	return candidates
+}
+
 // CrackPassword tries all permutations of passwords up to `maxLength`. Returns
 // the plaintext if crack was successful otherwise it will return an error.
 //
