@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
@@ -23,6 +24,24 @@ type Config struct {
 
 	// Port number of the controller to connect to
 	ControllerPort int
+
+	// Number of threads to use for password cracking
+	Threads int
+}
+
+// Threads to communicate individual cracking results
+type doneResp struct {
+	found    bool
+	password string
+	err      error
+}
+
+// Report back cracking results (once all are done)
+type resultResp struct {
+	found     bool
+	password  string
+	err       error
+	crackTime time.Duration
 }
 
 // Worker is reponsible for receiving password cracking jobs from
@@ -34,15 +53,24 @@ type Worker struct {
 	// Worker id, IP:PORT format
 	ID string
 
+	Threads int
+
 	conn    net.Conn
 	encoder *gob.Encoder
 	decoder *gob.Decoder
+
+	totalAttempts    int
+	lastAttemptsSent int
+	finished         chan resultResp
+	mu               sync.Mutex
 }
 
 // NewWorker creates a new worker with the provided logger instance.
 func NewWorker(logger *zap.Logger) *Worker {
 	return &Worker{
-		Logger: logger,
+		Logger:        logger,
+		totalAttempts: 0,
+		finished:      make(chan resultResp, 1),
 	}
 }
 
@@ -60,6 +88,7 @@ func (w *Worker) SetupServer(config Config) {
 
 	w.Logger.Info(fmt.Sprintf("Connected to controller at %s", address))
 	w.ID = conn.LocalAddr().String()
+	w.Threads = config.Threads
 	w.conn = conn
 	w.encoder = gob.NewEncoder(w.conn)
 	w.decoder = gob.NewDecoder(w.conn)
@@ -142,20 +171,25 @@ func (w *Worker) sendClose() error {
 
 // Sending back heartbeat messages
 func (w *Worker) handleHeartbeat() error {
+	total := w.getTotalAttempts()
+	delta := total - w.lastAttemptsSent
+
+	payload := shared.PayloadHearbeat{DeltaTested: delta, ActiveThreads: w.Threads}
 	m := shared.Message{
 		Version:   shared.MessageVersion,
 		ID:        w.ID,
 		Type:      shared.MessageHeartbeat,
 		Message:   "Sending heartbeat",
 		Timestamp: time.Now(),
+		Payload:   payload,
 	}
+
+	w.lastAttemptsSent = total
 
 	return w.send(m)
 }
 
-func (w *Worker) handleJob(payload shared.PayloadJobDetails) (string, error) {
-	decoder, _ := crypt.NewDecoderAll()
-
+func (w *Worker) buildHash(payload shared.PayloadJobDetails) string {
 	sections := make([]string, 0)
 	if payload.Algorithm != "" {
 		sections = append(sections, fmt.Sprintf("$%s", payload.Algorithm))
@@ -171,8 +205,104 @@ func (w *Worker) handleJob(payload shared.PayloadJobDetails) (string, error) {
 	}
 
 	fullHash := strings.Join(sections, "$")
+	return fullHash
+}
 
-	return shared.CrackPassword(decoder, fullHash, payload.SearchSpace, payload.PasswordLength)
+func (w *Worker) incTotalAttempts() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.totalAttempts += 1
+}
+
+func (w *Worker) getTotalAttempts() int {
+	var attempts int
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	attempts = w.totalAttempts
+	return attempts
+}
+
+func (w *Worker) handleJob(payload shared.PayloadJobDetails) {
+	candidates := shared.GenerateCandidatePasswords(payload.SearchSpace, payload.PasswordLength)
+	partitions := shared.PartitionArray(candidates, w.Threads)
+	fullHash := w.buildHash(payload)
+
+	done := make(chan doneResp, 1)
+	cancels := []chan bool{}
+
+	var dr doneResp
+
+	var wg sync.WaitGroup
+
+	// Container
+	wg.Go(func() {
+		threadsDone := 0
+
+		for {
+			select {
+			case d := <-done:
+				dr = d
+				threadsDone += 1
+				// Cancel existing threads once password is found
+				if d.found {
+					for _, cancel := range cancels {
+						cancel <- true
+						close(cancel)
+					}
+					return
+				}
+
+			default:
+				if threadsDone == w.Threads {
+					return
+				}
+			}
+		}
+	})
+
+	// Threads
+	start := time.Now()
+
+	for id, partition := range partitions {
+		cancel := make(chan bool, 1)
+		cancels = append(cancels, cancel)
+
+		wg.Go(func() {
+			w.Logger.Info(fmt.Sprintf("Thread %d started", id+1))
+			decoder, _ := crypt.NewDecoderAll()
+			for _, password := range partition {
+				w.incTotalAttempts()
+
+				select {
+				case <-cancel:
+					return
+				default:
+				}
+
+				digest, err := decoder.Decode(fullHash)
+				if err != nil {
+					done <- doneResp{found: false, password: "", err: err}
+					return
+				}
+				match := digest.Match(password)
+
+				if match {
+					done <- doneResp{found: true, password: password, err: nil}
+					return
+				}
+
+			}
+		})
+	}
+
+	wg.Wait()
+	err := w.sendJobResults(dr.password, dr.err, time.Since(start))
+	if err != nil {
+		w.Logger.Error("Failed to send job results", zap.Error(err))
+		w.cleanup()
+	}
 }
 
 func (w *Worker) cleanup() {
@@ -221,15 +351,7 @@ outer:
 
 			// Start cracking here
 			w.Logger.Info("Cracking password...")
-			start := time.Now()
-			result, err := w.handleJob(payload)
-			end := time.Since(start)
-
-			err = w.sendJobResults(result, err, end)
-			if err != nil {
-				break outer
-			}
-			continue
+			go w.handleJob(payload)
 
 		case shared.MessageJobResults:
 			err := w.sendClose()
