@@ -74,7 +74,7 @@ func parseArguments() controller.Config {
 	flag.StringVar(&config.Shadowfile, "f", "", "path to shadowfile")
 	flag.StringVar(&config.Username, "u", "", "username to be cracked")
 	flag.IntVar(&config.Port, "p", 0, "port number to listen on")
-	flag.IntVar(&config.HeartbeatSeconds, "b", 1, "period (seconds) to send a heartbeat")
+	flag.IntVar(&config.HeartbeatSeconds, "b", 0, "period (seconds) to send a heartbeat")
 
 	flag.Parse()
 

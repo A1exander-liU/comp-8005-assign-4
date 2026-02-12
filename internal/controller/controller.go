@@ -110,7 +110,7 @@ func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, e
 		},
 	}
 
-	// go c.sendHeartbeat(conn, 5*time.Second)
+	go c.sendHeartbeat(conn, time.Duration(c.HeartbeatSeconds)*time.Second)
 
 	return res, nil
 }
