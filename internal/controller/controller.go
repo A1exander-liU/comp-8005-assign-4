@@ -21,6 +21,9 @@ type Config struct {
 
 	// Port number for the controller to listen on
 	Port int
+
+	// Period for sending a heartbeat
+	HeartbeatSeconds int
 }
 
 type workerConnection struct {
@@ -40,14 +43,16 @@ type Controller struct {
 	listener net.Listener
 	workers  map[string]*workerConnection
 
-	ShadowData shared.ShadowData
+	ShadowData       shared.ShadowData
+	HeartbeatSeconds int
 }
 
 // NewController creates a new Controller object.
-func NewController(logger *zap.Logger, shadowData shared.ShadowData) *Controller {
+func NewController(logger *zap.Logger, shadowData shared.ShadowData, heartbeat int) *Controller {
 	return &Controller{
-		Logger:     logger,
-		ShadowData: shadowData,
+		Logger:           logger,
+		ShadowData:       shadowData,
+		HeartbeatSeconds: heartbeat,
 
 		workers: map[string]*workerConnection{},
 	}

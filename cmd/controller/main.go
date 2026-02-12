@@ -27,6 +27,12 @@ func handleArguments(config *controller.Config) {
 		flag.Usage()
 		os.Exit(1)
 	}
+
+	if config.HeartbeatSeconds < 1 {
+		fmt.Println("Error: -b must be a non-zero positive integer")
+		flag.Usage()
+		os.Exit(1)
+	}
 }
 
 func parseShadowfile(shadowfile, username string) shared.ShadowData {
@@ -68,6 +74,7 @@ func parseArguments() controller.Config {
 	flag.StringVar(&config.Shadowfile, "f", "", "path to shadowfile")
 	flag.StringVar(&config.Username, "u", "", "username to be cracked")
 	flag.IntVar(&config.Port, "p", 0, "port number to listen on")
+	flag.IntVar(&config.HeartbeatSeconds, "b", 1, "period (seconds) to send a heartbeat")
 
 	flag.Parse()
 
@@ -82,15 +89,12 @@ func main() {
 		fmt.Println("Failed to create logger:", err)
 		os.Exit(1)
 	}
-	controller := controller.NewController(logger, shared.ShadowData{})
 
-	controller.Logger.Info("Started parsing")
 	config := parseArguments()
 	handleArguments(&config)
 
 	shadowData := parseShadowfile(config.Shadowfile, config.Username)
-	logger.Info("Finished parsing")
-	controller.ShadowData = shadowData
+	controller := controller.NewController(logger, shadowData, config.HeartbeatSeconds)
 
 	controller.SetupServer(config.Port)
 
