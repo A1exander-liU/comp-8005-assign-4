@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/A1exander-liU/comp-8005-assign-1/internal/shared"
+	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 	"go.uber.org/zap"
 )
 
@@ -25,6 +25,7 @@ type Config struct {
 
 type workerConnection struct {
 	Registered bool
+	Done       chan bool
 
 	Conn   net.Conn
 	Router *shared.Router
@@ -85,11 +86,12 @@ func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared
 	}
 
 	c.workers[id].Registered = true
+	c.workers[id].Done = make(chan bool)
 
 	return shared.Message{ID: id, Type: shared.MessageRegister, Timestamp: time.Now(), Message: "Registration successful"}, nil
 }
 
-func (c *Controller) sendJob(_ shared.Message, _ net.Conn) (shared.Message, error) {
+func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, error) {
 	res := shared.Message{
 		Version: shared.MessageVersion, Type: shared.MessageJobDetails, Message: "Cracking details",
 		Timestamp: time.Now(),
@@ -103,14 +105,19 @@ func (c *Controller) sendJob(_ shared.Message, _ net.Conn) (shared.Message, erro
 		},
 	}
 
+	// go c.sendHeartbeat(conn, 5*time.Second)
+
 	return res, nil
 }
 
-func (c *Controller) handleJobResults(m shared.Message, _ net.Conn) (shared.Message, error) {
+func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.Message, error) {
 	payload, ok := m.Payload.(shared.PayloadJobResults)
 	if !ok {
-		return shared.Message{Version: shared.MessageVersion, Type: shared.MessageJobResults, Message: "Bad payload"}, nil
+		return shared.Message{Version: shared.MessageVersion, Type: shared.MessageError, Message: "Bad payload"}, nil
 	}
+
+	id := conn.RemoteAddr().String()
+	c.workers[id].Done <- true
 
 	res := shared.Message{
 		Version:   shared.MessageVersion,
@@ -143,6 +150,44 @@ func (c *Controller) displayJobResults(result string, cracked bool) {
 	}
 }
 
+func (c *Controller) handleHeartbeat(m shared.Message, conn net.Conn) (shared.Message, error) {
+	payload, _ := m.Payload.(shared.PayloadHearbeat)
+
+	c.Logger.Info("Heartbeat info",
+		zap.Int("delta", payload.DeltaTested),
+		zap.Int("activeThreads", payload.ActiveThreads),
+		zap.Float64("rate", payload.CurrentRate),
+	)
+
+	return shared.Message{}, nil
+}
+
+func (c *Controller) sendHeartbeat(conn net.Conn, period time.Duration) {
+	id := conn.RemoteAddr().String()
+	m := shared.Message{
+		Version:   shared.MessageVersion,
+		ID:        id,
+		Type:      shared.MessageHeartbeat,
+		Timestamp: time.Now(),
+		Message:   "Sending heartbeat",
+	}
+	worker := c.workers[id]
+	ticker := time.NewTicker(period)
+
+	for {
+		select {
+		case <-worker.Done:
+			return
+		case <-ticker.C:
+			err := worker.Router.Send(m)
+			if err != nil {
+				ticker.Stop()
+				return
+			}
+		}
+	}
+}
+
 // HandleConnection manages communication with a single worker for the
 // whole entire lifecycle.
 func (c *Controller) HandleConnection(conn net.Conn) {
@@ -151,6 +196,7 @@ func (c *Controller) HandleConnection(conn net.Conn) {
 	r.Handle(shared.MessageJobDetails, c.sendJob)
 	r.Handle(shared.MessageJobResults, c.handleJobResults)
 	r.Handle(shared.MessageClose, c.handleClose)
+	r.Handle(shared.MessageHeartbeat, c.handleHeartbeat)
 
 	c.workers[conn.RemoteAddr().String()] = &workerConnection{
 		Registered: false,

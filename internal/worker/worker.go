@@ -4,13 +4,14 @@ package worker
 import (
 	"encoding/gob"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/A1exander-liU/comp-8005-assign-1/internal/shared"
+	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 	"github.com/go-crypt/crypt"
 	"go.uber.org/zap"
 )
@@ -36,8 +37,6 @@ type Worker struct {
 	conn    net.Conn
 	encoder *gob.Encoder
 	decoder *gob.Decoder
-
-	router *shared.Router
 }
 
 // NewWorker creates a new worker with the provided logger instance.
@@ -66,23 +65,19 @@ func (w *Worker) SetupServer(config Config) {
 	w.decoder = gob.NewDecoder(w.conn)
 }
 
-// Get sends and receives a message with the controller.
-func (w *Worker) get(m shared.Message) (shared.Message, error) {
-	if err := w.encoder.Encode(m); err != nil {
-		return shared.Message{}, err
+// Send a message to the controller
+func (w *Worker) send(m shared.Message) error {
+	err := w.encoder.Encode(m)
+	if err != nil {
+		w.Logger.Error("Failed to send", zap.Error(err))
+		return err
 	}
-	w.Logger.Info("Sent", zap.String("message", m.Message), zap.Time("timestamp", m.Timestamp))
 
-	var message shared.Message
-	if err := w.decoder.Decode(&message); err != nil {
-		return shared.Message{}, err
-	}
-	w.Logger.Info("Received", zap.String("message", message.Message), zap.Time("timestamp", m.Timestamp))
-
-	return message, nil
+	w.Logger.Info(m.Message)
+	return nil
 }
 
-func (w *Worker) sendRegistration() (shared.Message, error) {
+func (w *Worker) sendRegistration() error {
 	m := shared.Message{
 		Version:   shared.MessageVersion,
 		ID:        w.ID,
@@ -91,10 +86,10 @@ func (w *Worker) sendRegistration() (shared.Message, error) {
 		Message:   "Sending registration request",
 	}
 
-	return w.get(m)
+	return w.send(m)
 }
 
-func (w *Worker) sendJobRequest() (shared.Message, error) {
+func (w *Worker) sendJobRequest() error {
 	m := shared.Message{
 		Version:   shared.MessageVersion,
 		ID:        w.ID,
@@ -103,10 +98,10 @@ func (w *Worker) sendJobRequest() (shared.Message, error) {
 		Message:   "Sending request for job",
 	}
 
-	return w.get(m)
+	return w.send(m)
 }
 
-func (w *Worker) sendJobResults(result string, err error, crackTime time.Duration) (shared.Message, error) {
+func (w *Worker) sendJobResults(result string, err error, crackTime time.Duration) error {
 	m := shared.Message{
 		Version:   shared.MessageVersion,
 		ID:        w.ID,
@@ -118,22 +113,22 @@ func (w *Worker) sendJobResults(result string, err error, crackTime time.Duratio
 	if err != nil {
 		w.Logger.Info("Failed to crack password")
 
-		m.Message = err.Error()
+		m.Message = fmt.Sprintf("Sending job results: %s", err.Error())
 		jobResults.Password = ""
 		jobResults.Time = crackTime
 	} else {
 		w.Logger.Info("Sucessfully cracked password")
 
-		m.Message = "Password cracked"
+		m.Message = "Sending job results: Password cracked"
 		jobResults.Password = result
 		jobResults.Time = crackTime
 	}
 	m.Payload = jobResults
 
-	return w.get(m)
+	return w.send(m)
 }
 
-func (w *Worker) sendClose() (shared.Message, error) {
+func (w *Worker) sendClose() error {
 	m := shared.Message{
 		Version:   shared.MessageVersion,
 		ID:        w.ID,
@@ -142,8 +137,20 @@ func (w *Worker) sendClose() (shared.Message, error) {
 		Timestamp: time.Now(),
 	}
 
-	res, err := w.get(m)
-	return res, err
+	return w.send(m)
+}
+
+// Sending back heartbeat messages
+func (w *Worker) handleHeartbeat() error {
+	m := shared.Message{
+		Version:   shared.MessageVersion,
+		ID:        w.ID,
+		Type:      shared.MessageHeartbeat,
+		Message:   "Sending heartbeat",
+		Timestamp: time.Now(),
+	}
+
+	return w.send(m)
 }
 
 func (w *Worker) handleJob(payload shared.PayloadJobDetails) (string, error) {
@@ -168,10 +175,6 @@ func (w *Worker) handleJob(payload shared.PayloadJobDetails) (string, error) {
 	return shared.CrackPassword(decoder, fullHash, payload.SearchSpace, payload.PasswordLength)
 }
 
-func (w *Worker) handleHeartbeat(m shared.Message, conn net.Conn) (shared.Message, error) {
-	return shared.Message{}, nil
-}
-
 func (w *Worker) cleanup() {
 	_ = w.Logger.Sync()
 	_ = w.conn.Close()
@@ -179,36 +182,74 @@ func (w *Worker) cleanup() {
 
 // HandleConnection handles worker lifecycle of sending and receiving to and from the controller.
 func (w *Worker) HandleConnection() {
-	// w.router = shared.NewRouter(w.Logger, w.conn)
-	// w.router.Handle(shared.MessageHeartbeat, w.handleHeartbeat)
-	// go w.router.Start()
+	// cracking job goes into thread
+	// loop still keeps processing messages (i.e. heartbeat while cracking)
+	// how can the cracking threads notify when done without blocking
+	// - use a channel to notify
 
-	_, err := w.sendRegistration()
+	err := w.sendRegistration()
 	if err != nil {
 		w.cleanup()
 		return
 	}
 
-	res, err := w.sendJobRequest()
-	if err != nil {
-		w.cleanup()
-		return
+outer:
+	for {
+		var m shared.Message
+
+		err := w.decoder.Decode(&m)
+		if err == io.EOF {
+			break outer
+		}
+		if err != nil {
+			w.Logger.Error("Failed to decode", zap.Error(err))
+			continue
+		}
+
+		w.Logger.Info("Received from controller", zap.String("message", m.Message))
+
+		switch m.Type {
+		case shared.MessageRegister:
+			err := w.sendJobRequest()
+			if err != nil {
+				break outer
+			}
+
+		case shared.MessageJobDetails:
+			payload, _ := m.Payload.(shared.PayloadJobDetails)
+			w.Logger.Info("Received job details", zap.String("algorithm", payload.Algorithm))
+
+			// Start cracking here
+			w.Logger.Info("Cracking password...")
+			start := time.Now()
+			result, err := w.handleJob(payload)
+			end := time.Since(start)
+
+			err = w.sendJobResults(result, err, end)
+			if err != nil {
+				break outer
+			}
+			continue
+
+		case shared.MessageJobResults:
+			err := w.sendClose()
+			if err != nil {
+				break outer
+			}
+
+		case shared.MessageHeartbeat:
+			err := w.handleHeartbeat()
+			if err != nil {
+				break outer
+			}
+
+		case shared.MessageError:
+			break outer
+
+		case shared.MessageClose:
+			break outer
+		}
 	}
 
-	payload, _ := res.Payload.(shared.PayloadJobDetails)
-	start := time.Now()
-	w.Logger.Info("Cracking...")
-	result, err := w.handleJob(payload)
-	end := time.Since(start)
-
-	_, err = w.sendJobResults(result, err, end)
-	if err != nil {
-		w.cleanup()
-		return
-	}
-
-	_, err = w.sendClose()
-	if err != nil {
-		return
-	}
+	w.cleanup()
 }
