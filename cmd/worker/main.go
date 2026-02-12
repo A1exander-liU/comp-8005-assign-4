@@ -22,6 +22,12 @@ func handleArguments(config *worker.Config) {
 		os.Exit(1)
 	}
 
+	if config.Threads < 1 {
+		fmt.Println("Error: -t must be a non-zero positive integer")
+		flag.Usage()
+		os.Exit(1)
+	}
+
 	result := shared.ParseAddress(config.ControllerIP, config.ControllerPort)
 	if result == "" {
 		fmt.Println("controller ip is not in correct format")
@@ -35,6 +41,7 @@ func parseArguments() worker.Config {
 
 	flag.StringVar(&config.ControllerIP, "c", "", "controller ip")
 	flag.IntVar(&config.ControllerPort, "p", 0, "controller port number")
+	flag.IntVar(&config.Threads, "t", 1, "thread count for password cracking")
 
 	flag.Parse()
 
