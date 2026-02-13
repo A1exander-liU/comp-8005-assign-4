@@ -30,6 +30,7 @@ type Router struct {
 // NewRouter creates a new router for the associated connection.
 func NewRouter(l *zap.Logger, conn net.Conn) *Router {
 	return &Router{
+		ID:       conn.RemoteAddr().String(),
 		l:        l,
 		handlers: map[MessageType]Handler{},
 		conn:     conn,
@@ -91,7 +92,8 @@ func (r *Router) Start() error {
 			return err
 		}
 
-		r.l.Info("Received", zap.String("id", message.ID), zap.String("message", message.Message), zap.Time("timestamp", message.Timestamp))
+		m := fmt.Sprintf("From %s", r.ID)
+		r.l.Info(m, zap.String("type", string(message.Type)), zap.String("message", message.Message), zap.Time("timestamp", message.Timestamp))
 
 		res, _ := r.dispatch(message)
 		if res == (Message{}) {
@@ -109,6 +111,7 @@ func (r *Router) Start() error {
 			return err
 		}
 
-		r.l.Info("Sent", zap.String("message", res.Message), zap.Time("timestamp", res.Timestamp))
+		m = fmt.Sprintf("To %s", r.ID)
+		r.l.Info(m, zap.String("type", string(res.Type)), zap.String("message", res.Message), zap.Time("timestamp", res.Timestamp))
 	}
 }
