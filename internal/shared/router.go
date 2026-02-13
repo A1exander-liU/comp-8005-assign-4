@@ -85,7 +85,7 @@ func (r *Router) Start() error {
 
 		err := r.decoder.Decode(&message)
 		if err == io.EOF {
-			r.l.Info("Connection closed")
+			r.l.Info("EOF: Connection closed")
 			return nil
 		}
 		if err != nil {
@@ -102,9 +102,7 @@ func (r *Router) Start() error {
 
 		err = r.Send(res)
 		if res.Type == MessageClose {
-			r.l.Info("Connection closed")
-			r.done <- true
-			close(r.done)
+			r.l.Info("Req: Connection closed")
 			return r.conn.Close()
 		}
 		if err != nil {

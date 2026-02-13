@@ -4,7 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/controller"
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
@@ -84,18 +86,29 @@ func parseArguments() controller.Config {
 func main() {
 	shared.RegisterMessages()
 
+	logPath := filepath.Join("logs", "log")
+	if _, err := os.Stat(logPath); !os.IsNotExist(err) {
+		if err = os.Remove(logPath); err != nil {
+			fmt.Println("Failed to remove file:", err)
+			os.Exit(1)
+		}
+	}
+
 	cfg := zap.NewDevelopmentConfig()
 	cfg.OutputPaths = []string{"stdout", "./logs/log"}
 	cfg.ErrorOutputPaths = []string{"stderr", "./logs/log"}
-	cfg.DisableCaller = true
 
 	logger := zap.Must(cfg.Build())
 
 	config := parseArguments()
 	handleArguments(&config)
 
+	parseStart := time.Now()
 	shadowData := parseShadowfile(config.Shadowfile, config.Username)
+	parseDuration := time.Since(parseStart)
+
 	controller := controller.NewController(logger, shadowData, config.HeartbeatSeconds)
+	controller.LatencyParse = parseDuration
 
 	controller.SetupServer(config.Port)
 

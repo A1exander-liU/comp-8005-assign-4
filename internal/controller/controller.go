@@ -45,6 +45,12 @@ type Controller struct {
 
 	ShadowData       shared.ShadowData
 	HeartbeatSeconds int
+
+	LatencyParse        time.Duration
+	LatencyDispatch     time.Duration
+	LatencyDispatchTime time.Time
+	LatencyCrack        time.Duration
+	LatencyReturn       time.Duration
 }
 
 // NewController creates a new Controller object.
@@ -93,13 +99,17 @@ func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared
 	c.workers[id].Registered = true
 	c.workers[id].Done = make(chan bool)
 
+	c.LatencyDispatchTime = time.Now()
+
 	return shared.Message{ID: id, Type: shared.MessageRegister, Timestamp: time.Now(), Message: "Registration successful"}, nil
 }
 
 func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, error) {
+	timestamp := time.Now()
+
 	res := shared.Message{
 		Version: shared.MessageVersion, Type: shared.MessageJobDetails, Message: "Cracking details",
-		Timestamp: time.Now(),
+		Timestamp: timestamp,
 		Payload: shared.PayloadJobDetails{
 			Algorithm:      c.ShadowData.Algorithm,
 			Parameters:     c.ShadowData.Parameters,
@@ -109,6 +119,8 @@ func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, e
 			PasswordLength: 3,
 		},
 	}
+
+	c.LatencyDispatch = timestamp.Sub(c.LatencyDispatchTime)
 
 	go c.sendHeartbeat(conn, time.Duration(c.HeartbeatSeconds)*time.Second)
 
@@ -121,13 +133,17 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 		return shared.Message{Version: shared.MessageVersion, Type: shared.MessageError, Message: "Bad payload"}, nil
 	}
 
+	timestamp := time.Now()
+
 	res := shared.Message{
 		Version:   shared.MessageVersion,
 		Type:      shared.MessageJobResults,
 		Message:   "Received message details",
-		Timestamp: time.Now(),
+		Timestamp: timestamp,
 	}
 
+	c.LatencyCrack = payload.Time
+	c.LatencyReturn = timestamp.Sub(m.Timestamp)
 	c.displayJobResults(payload.Password, payload.Err, payload.Time)
 
 	return res, nil
@@ -189,6 +205,17 @@ func (c *Controller) sendHeartbeat(conn net.Conn, period time.Duration) {
 	}
 }
 
+func (c *Controller) reportFinalResults() {
+	total := c.LatencyParse + c.LatencyDispatch + c.LatencyCrack + c.LatencyReturn
+
+	fmt.Println("FINAL RESULTS (seconds)")
+	fmt.Println("Parse:", c.LatencyParse.Seconds())
+	fmt.Println("Dispatch:", c.LatencyDispatch.Seconds())
+	fmt.Println("Crack:", c.LatencyCrack.Seconds())
+	fmt.Println("Return:", c.LatencyReturn.Seconds())
+	fmt.Println("Total:", total)
+}
+
 // HandleConnection manages communication with a single worker for the
 // whole entire lifecycle.
 func (c *Controller) HandleConnection(conn net.Conn) {
@@ -207,4 +234,6 @@ func (c *Controller) HandleConnection(conn net.Conn) {
 	if err := r.Start(); err != nil {
 		c.Logger.Error(err.Error())
 	}
+
+	c.reportFinalResults()
 }
