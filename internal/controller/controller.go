@@ -215,7 +215,7 @@ func (c *Controller) reportFinalResults() {
 	fmt.Println("Dispatch:", c.LatencyDispatch.Seconds())
 	fmt.Println("Crack:", c.LatencyCrack.Seconds())
 	fmt.Println("Return:", c.LatencyReturn.Seconds())
-	fmt.Println("Total:", total)
+	fmt.Println("Total:", total.Seconds())
 }
 
 // HandleConnection manages communication with a single worker for the
