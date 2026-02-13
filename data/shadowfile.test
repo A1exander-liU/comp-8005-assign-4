@@ -7,3 +7,5 @@ sha512:$6$hKYGVHqFYKssZmhQ$YH3CnWvo0JQi1.bTvdiGpa44I4xeRTcV3FgMTrjMO11BQRvfg2jHi
 bcrypt:$2b$05$S75wAXftoLLO0MWuslJyfeqKGtgiuOOr0vM6QjGocOzAivu3WacpO
 yescrypt:$y$j9T$4WyoOoiDbLXtkki9V9xry/$9i6zNy3KKnh6hrnI/63gD8Y8mJx0n6sOJ5.CPoJfLU5
 aaa:$5$rounds=535000$HMC5nXbJKNZcLdYW$1W2jbzFsUT68kUWjzMSvG30UHSCuwvxj8KRsfmBfDi1
+yescrypt???:$y$j9T$VtBvUL6.Cw/JwYB4bCnqG/$GVwhV/dbVieuGR2JhPU1liUHbB/s39nZiULhI8Nwph2
+yescryptZ?@:$y$j9T$JCKj7W6w75qsJC6vQqR5V.$plf7ClKLlYfwGdi1rDbvwTDyiLqqGGpv.ylXG554hS6
