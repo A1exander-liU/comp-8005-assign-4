@@ -51,11 +51,11 @@ func parseArguments() worker.Config {
 func main() {
 	shared.RegisterMessages()
 
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		fmt.Println("Failed to create logger:", err)
-		os.Exit(1)
-	}
+	cfg := zap.NewDevelopmentConfig()
+	cfg.OutputPaths = []string{"stdout", "./logs/log"}
+	cfg.ErrorOutputPaths = []string{"stderr", "./logs/log"}
+
+	logger := zap.Must(cfg.Build())
 
 	config := parseArguments()
 	handleArguments(&config)
