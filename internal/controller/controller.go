@@ -236,6 +236,4 @@ func (c *Controller) HandleConnection(conn net.Conn) {
 	if err := r.Start(); err != nil {
 		c.Logger.Error(err.Error())
 	}
-
-	c.reportFinalResults()
 }
