@@ -160,12 +160,14 @@ func (c *Controller) handleClose(_ shared.Message, conn net.Conn) (shared.Messag
 	return shared.Message{ID: id, Type: shared.MessageClose, Timestamp: time.Now(), Message: message}, nil
 }
 
-func (c *Controller) displayJobResults(result string, err error, time time.Duration) {
+func (c *Controller) displayJobResults(result string, err error, _ time.Duration) {
 	if err != nil {
-		c.Logger.Info("JOB RESULTS: Failed to crack password", zap.Error(err))
+		fmt.Println("PASSWORD: FAILED TO CRACK PASSWORD", err)
 	} else {
-		c.Logger.Info("JOB RESULTS: Cracked password", zap.String("password", result), zap.Duration("crack_time", time))
+		fmt.Printf("PASSWORD: %s\n", result)
 	}
+
+	c.reportFinalResults()
 }
 
 func (c *Controller) handleHeartbeat(m shared.Message, conn net.Conn) (shared.Message, error) {
