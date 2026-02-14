@@ -10,22 +10,22 @@ aaa:$5$rounds=535000$HMC5nXbJKNZcLdYW$1W2jbzFsUT68kUWjzMSvG30UHSCuwvxj8KRsfmBfDi
 yescrypt???:$y$j9T$VtBvUL6.Cw/JwYB4bCnqG/$GVwhV/dbVieuGR2JhPU1liUHbB/s39nZiULhI8Nwph2
 yescryptZ?@:$y$j9T$JCKj7W6w75qsJC6vQqR5V.$plf7ClKLlYfwGdi1rDbvwTDyiLqqGGpv.ylXG554hS6
 
-md5abc:$1$FlIQhq9e$jwdSib8QUtOhV7cTC9EgI/
-md5a#?:$1$Mo1d0dfn$i4fuz5ZWtHc96FgnfT7za.
-md5456:$1$7Ar6/vw5$zPzOX2uC5PABwGPiBcaxG/
+md5-abc:$1$FlIQhq9e$jwdSib8QUtOhV7cTC9EgI/
+md5-a#?:$1$Mo1d0dfn$i4fuz5ZWtHc96FgnfT7za.
+md5-456:$1$7Ar6/vw5$zPzOX2uC5PABwGPiBcaxG/
 
-sha256abc:$5$U6.xeE5yObf4xy/a$/TLbSfQd.4gHETMtjSscvC5r5Yp60bCKtDHi2E/39S7
-sha256a#?:$5$FHTdqiirBDo.Zgzu$Z0UPuS2Ik.MwdUW2Kkzv1rXhM8shGLgUvT/1Sb5DhA4
-sha256456:$5$cHcH9IViEmJR6Xfj$EQSPFJtR/Yj4/yjtaTQ0SQNrpTuNsABL62a/IiRr/R7
+sha256-abc:$5$U6.xeE5yObf4xy/a$/TLbSfQd.4gHETMtjSscvC5r5Yp60bCKtDHi2E/39S7
+sha256-a#?:$5$FHTdqiirBDo.Zgzu$Z0UPuS2Ik.MwdUW2Kkzv1rXhM8shGLgUvT/1Sb5DhA4
+sha256-456:$5$cHcH9IViEmJR6Xfj$EQSPFJtR/Yj4/yjtaTQ0SQNrpTuNsABL62a/IiRr/R7
 
-sha512abc:$6$zvwxZt5ouASEXfUg$Wy.MgVT7876R0ug7xrzmBWQcK5NC6PEYzllrTxvoYoRiO3jpDvadJMlNmdf9qRv3kls8WoRVj0csdFGCwPm2z/
-sha512a#?:$6$WBKgQiBtllBS1oCq$JHyM1E5kprdI2RYqoChonCwVs4MoaY8wFCFWolZ7LKjtpvtUSh4N0zet7KsCaPUvQb4kxxFCuyJ11gbTwV0Wc.
-sha512456:$6$hyibz4PrgM0ALBcf$L.nr/BPhxiRVXAMuPKD/TmxBYD9jy76kVpSscd7P1DJAx25bE4O2x9JURhKhh4ERktNKYmpLFCXmM8aMs.Vlr/
+sha512-abc:$6$zvwxZt5ouASEXfUg$Wy.MgVT7876R0ug7xrzmBWQcK5NC6PEYzllrTxvoYoRiO3jpDvadJMlNmdf9qRv3kls8WoRVj0csdFGCwPm2z/
+sha512-a#?:$6$WBKgQiBtllBS1oCq$JHyM1E5kprdI2RYqoChonCwVs4MoaY8wFCFWolZ7LKjtpvtUSh4N0zet7KsCaPUvQb4kxxFCuyJ11gbTwV0Wc.
+sha512-456:$6$hyibz4PrgM0ALBcf$L.nr/BPhxiRVXAMuPKD/TmxBYD9jy76kVpSscd7P1DJAx25bE4O2x9JURhKhh4ERktNKYmpLFCXmM8aMs.Vlr/
 
-bcryptabc:$2b$05$ZEhjgv8y7F/I7u97wTNSLeuGhzBw8oyh3o3qnZcGhGo/H2k00VhsG
-bcrypta#?:$2b$05$/.JA/Ou9rzYgyaiYiUOUQePErjgxtWLYfXPUs6WqZpiKd6q6KLKsm
-bcrypt456:$2b$05$RkByGWB3KjkYV9do5E7zteqr/RZKGpzNfgPVl27aMunoEmk7nSYem
+bcrypt-abc:$2b$05$ZEhjgv8y7F/I7u97wTNSLeuGhzBw8oyh3o3qnZcGhGo/H2k00VhsG
+bcrypt-a#?:$2b$05$/.JA/Ou9rzYgyaiYiUOUQePErjgxtWLYfXPUs6WqZpiKd6q6KLKsm
+bcrypt-456:$2b$05$RkByGWB3KjkYV9do5E7zteqr/RZKGpzNfgPVl27aMunoEmk7nSYem
 
-yescryptabc:$y$j9T$5VDqOc9J7gL2fOtNU5lX3/$lJVXz9KmzSza1Z76AsFXgs7MmmraJheMlDVMVEZ.2w4
-yescrypta#?:$y$j9T$j65jdggkirBuqAgx.HX0y/$0AwKLVcQArmO/GFDtIVxou8gw/AsPI.01uUwel7eCD8
-yescrypt456:$y$j9T$QXaPDUTsoaET7OBiTIpvN1$/TVflTnoZkWyhTOMfrBNp0qJ9ASIzkMSBEhanXh2OtA
+yescrypt-abc:$y$j9T$5VDqOc9J7gL2fOtNU5lX3/$lJVXz9KmzSza1Z76AsFXgs7MmmraJheMlDVMVEZ.2w4
+yescrypt-a#?:$y$j9T$j65jdggkirBuqAgx.HX0y/$0AwKLVcQArmO/GFDtIVxou8gw/AsPI.01uUwel7eCD8
+yescrypt-456:$y$j9T$QXaPDUTsoaET7OBiTIpvN1$/TVflTnoZkWyhTOMfrBNp0qJ9ASIzkMSBEhanXh2OtA
