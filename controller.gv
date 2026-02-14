@@ -1,0 +1,50 @@
+digraph Controller {
+  node [shape = rectangle; fontsize = 15;];
+  edge [fontsize = 15;];
+  
+  // States
+  START [shape = "doublecircle";];
+  PARSE_ARGS;
+  HANDLE_ARGS;
+  USAGE;
+  PARSE_SHADOW_FILE;
+  SETUP_SERVER;
+  HANDLE_REGISTRATION;
+  SEND_REGISTRATION_CONFIRMATION;
+  SEND_JOB;
+  SEND_HEARTBEAT;
+  HANDLE_JOB_RESULTS;
+  DISPLAY_JOB_RESULTS;
+  CLEANUP;
+  EXIT [shape = "doublecircle";];
+  
+  // Transitions
+  START -> PARSE_ARGS [label = "parseArguments";];
+  
+  PARSE_ARGS -> HANDLE_ARGS [label = "handleArguments";];
+  PARSE_ARGS -> USAGE [label = "usage";];
+  
+  HANDLE_ARGS -> PARSE_SHADOW_FILE [label = "parseShadowFile";];
+  HANDLE_ARGS -> USAGE [label = "usage";];
+  
+  PARSE_SHADOW_FILE -> SETUP_SERVER [label = "setupServer";];
+  PARSE_SHADOW_FILE -> CLEANUP [label = "cleanup";];
+  
+  SETUP_SERVER -> SEND_HEARTBEAT [label = "sendHeartbeat";];
+  SETUP_SERVER -> CLEANUP [label = "cleanup";];
+  
+  SEND_HEARTBEAT -> HANDLE_REGISTRATION [label = "handleRegistration"]
+  
+  HANDLE_REGISTRATION -> SEND_REGISTRATION_CONFIRMATION [label = "sendRegistrationConfirmation";];
+  
+  SEND_REGISTRATION_CONFIRMATION -> SEND_JOB [label = "sendJob";];
+  
+  SEND_JOB -> HANDLE_JOB_RESULTS [label = "handleJobResults";];
+  
+  HANDLE_JOB_RESULTS -> DISPLAY_JOB_RESULTS [label = "displayJobResults";];
+  
+  DISPLAY_JOB_RESULTS -> CLEANUP [label = "cleanup";];
+  
+  USAGE -> CLEANUP;
+  CLEANUP -> EXIT;
+}

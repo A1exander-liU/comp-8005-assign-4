@@ -1,0 +1,50 @@
+digraph Worker {
+  node [shape = rectangle; fontsize = 15;];
+  edge [fontsize = 15;];
+  
+  // States
+  START [shape = "doublecircle";];
+  PARSE_ARGS;
+  HANDLE_ARGS;
+  USAGE;
+  SETUP_SERVER;
+  SEND_REGISTRATION;
+  HANDLE_REGISTRATION_CONFIRMATION;
+  HANDLE_JOB;
+  PARTITION_SEARCHSPACE;
+  HANDLE_HEARTBEAT;
+  CRACK_PASSWORD;
+  SEND_JOB_RESULTS;
+  CLEANUP;
+  EXIT [shape = "doublecircle";];
+  
+  // Transitions
+  START -> PARSE_ARGS [label = "parseArguments";];
+  
+  PARSE_ARGS -> HANDLE_ARGS [label = "handleArguments";];
+  PARSE_ARGS -> USAGE [label = "usage";];
+  
+  HANDLE_ARGS -> SETUP_SERVER [label = "setupServer";];
+  HANDLE_ARGS -> USAGE [label = "usage";];
+  
+  SETUP_SERVER -> SEND_REGISTRATION [label = "sendRegistration";];
+  SETUP_SERVER -> CLEANUP [label = "cleanup";];
+  
+  SEND_REGISTRATION -> HANDLE_REGISTRATION_CONFIRMATION [label = "handleRegistrationConfirmation";];
+  SEND_REGISTRATION -> CLEANUP [label = "cleanup";];
+  
+  HANDLE_REGISTRATION_CONFIRMATION -> HANDLE_JOB [label = "handleJob";];
+  
+  HANDLE_JOB -> HANDLE_HEARTBEAT [label = "handleHeartbeat";];
+  
+  HANDLE_HEARTBEAT -> PARTITION_SEARCHSPACE [label = "partitionSearchspace";];
+  
+  PARTITION_SEARCHSPACE -> CRACK_PASSWORD [label = "crackPassword";];
+  
+  CRACK_PASSWORD -> SEND_JOB_RESULTS [label = "sendJobResults";];
+  
+  SEND_JOB_RESULTS -> CLEANUP [label = "cleanup";];
+  
+  USAGE -> CLEANUP;
+  CLEANUP -> EXIT;
+}
