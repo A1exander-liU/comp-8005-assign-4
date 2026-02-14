@@ -166,7 +166,7 @@ func (w *Worker) handleHeartbeat() error {
 	total := w.getTotalAttempts()
 	delta := total - w.lastAttemptsSent
 
-	payload := shared.PayloadHearbeat{DeltaTested: delta, ActiveThreads: w.Threads}
+	payload := shared.PayloadHearbeat{TotalTested: total, DeltaTested: delta, ActiveThreads: w.Threads}
 	m := shared.Message{
 		Version:   shared.MessageVersion,
 		ID:        w.ID,

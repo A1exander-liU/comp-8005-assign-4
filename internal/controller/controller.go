@@ -174,6 +174,7 @@ func (c *Controller) handleHeartbeat(m shared.Message, conn net.Conn) (shared.Me
 	payload, _ := m.Payload.(shared.PayloadHearbeat)
 
 	c.Logger.Info("Heartbeat info",
+		zap.Int("total", payload.TotalTested),
 		zap.Int("delta", payload.DeltaTested),
 		zap.Int("activeThreads", payload.ActiveThreads),
 	)

@@ -51,6 +51,9 @@ type PayloadJobResults struct {
 }
 
 type PayloadHearbeat struct {
+	// Number of password candidates tested in total so far
+	TotalTested int
+
 	// Number of password candidates tested since last heartbeat
 	DeltaTested int
 
