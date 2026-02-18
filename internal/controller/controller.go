@@ -145,10 +145,8 @@ func (c *Controller) HandleArguments(config Config) {
 // of the desired user.
 //
 // This will return with an error if:
-//
-// - it failed to read the shadowfile
-//
-// - it could not find the user
+//   - it failed to read the shadowfile
+//   - it could not find the user
 func (c *Controller) parseShadowFile() {
 	foundUser := false
 
@@ -188,10 +186,11 @@ func (c *Controller) parseShadowFile() {
 // partitionSearchSpace creates chunks configured through the chunk size CLI argument.
 func (c *Controller) partitionSearchSpace() {
 	passwords := shared.GenerateCandidatePasswords(shared.SearchSpace, 3)
-	partitions := shared.PartitionArray(passwords, c.Config.ChunkSize)
+	partitions := shared.PartitionArraySize(passwords, c.Config.ChunkSize)
 
 	chunks := make(map[int]chunk, 0)
 	for i, c := range partitions {
+		fmt.Println(i, len(c))
 		chunks[i] = chunk{passwords: c, status: ChunkUnassigned}
 	}
 

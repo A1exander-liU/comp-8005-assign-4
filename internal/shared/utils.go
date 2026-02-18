@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -55,6 +56,7 @@ func checkPassword(decoder *crypt.Decoder, plaintext, hash string) (bool, error)
 	return digest.Match(plaintext), nil
 }
 
+// PartitionArray divides the array into 'count' number of partitions.
 func PartitionArray(array []string, count int) [][]string {
 	partitions := [][]string{}
 	arrayLength := len(array)
@@ -71,6 +73,17 @@ func PartitionArray(array []string, count int) [][]string {
 	for i := count * partitionSize; i < arrayLength; i++ {
 		partitions[num%count] = append(partitions[num%count], array[i])
 		num += 1
+	}
+
+	return partitions
+}
+
+// PartitionArraySize divides the array into partitions of 'partitionSize'.
+func PartitionArraySize(array []string, partitionSize int) [][]string {
+	partitions := [][]string{}
+
+	for chunk := range slices.Chunk(array, partitionSize) {
+		partitions = append(partitions, chunk)
 	}
 
 	return partitions
