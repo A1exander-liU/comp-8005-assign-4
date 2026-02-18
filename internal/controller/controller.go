@@ -276,7 +276,6 @@ func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, e
 			Parameters:     c.ShadowData.Parameters,
 			Salt:           c.ShadowData.Salt,
 			Hash:           c.ShadowData.Hash,
-			SearchSpace:    shared.SearchSpace,
 			ChunkID:        chunkID,
 			Chunk:          workerChunk,
 			PasswordLength: 3,
@@ -285,7 +284,7 @@ func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, e
 
 	c.LatencyDispatch = timestamp.Sub(c.LatencyDispatchTime)
 
-	go c.sendHeartbeat(conn, time.Duration(c.HeartbeatSeconds)*time.Second)
+	// go c.sendHeartbeat(conn, time.Duration(c.HeartbeatSeconds)*time.Second)
 
 	return res, nil
 }

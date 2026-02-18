@@ -38,12 +38,10 @@ type ShadowData struct {
 type PayloadJobDetails struct {
 	// Password hash details
 	Username, Algorithm, Parameters, Salt, Hash string
-	// A string of individual for the worker to generate candidate passwords from
-	SearchSpace    string
-	PasswordLength int
 
-	ChunkID int
-	Chunk   []string
+	PasswordLength int
+	ChunkID        int
+	Chunk          []string
 }
 
 type PayloadJobResults struct {
