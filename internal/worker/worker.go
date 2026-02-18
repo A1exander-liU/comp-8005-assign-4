@@ -3,6 +3,7 @@ package worker
 
 import (
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -135,14 +136,14 @@ func (w *Worker) sendJobResults(result string, err error, crackTime time.Duratio
 		m.Message = fmt.Sprintf("Sending job results: %s", err.Error())
 		jobResults.Password = ""
 		jobResults.Time = crackTime
-		jobResults.Err = err
+		jobResults.Err = err.Error()
 	} else {
 		w.Logger.Info("Sucessfully cracked password")
 
 		m.Message = "Sending job results: Password cracked"
 		jobResults.Password = result
 		jobResults.Time = crackTime
-		jobResults.Err = nil
+		jobResults.Err = ""
 	}
 	m.Payload = jobResults
 
@@ -217,8 +218,7 @@ func (w *Worker) getTotalAttempts() int {
 }
 
 func (w *Worker) handleJob(payload shared.PayloadJobDetails) {
-	candidates := shared.GenerateCandidatePasswords(payload.SearchSpace, payload.PasswordLength)
-	partitions := shared.PartitionArray(candidates, w.Threads)
+	partitions := shared.PartitionArray(payload.Chunk, w.Threads)
 	fullHash := w.buildHash(payload)
 
 	done := make(chan doneResp, 1)
@@ -284,8 +284,9 @@ func (w *Worker) handleJob(payload shared.PayloadJobDetails) {
 					done <- doneResp{found: true, password: password, err: nil}
 					return
 				}
-
 			}
+			// password not found in this chunk
+			done <- doneResp{found: false, password: "", err: errors.New("failed to find password in chunk")}
 		})
 	}
 
@@ -325,7 +326,7 @@ outer:
 		}
 		if err != nil {
 			w.Logger.Error("Failed to decode", zap.Error(err))
-			continue
+			break outer
 		}
 
 		w.Logger.Info("Received from controller", zap.String("message", m.Message))

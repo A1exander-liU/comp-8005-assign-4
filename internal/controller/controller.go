@@ -2,6 +2,7 @@
 package controller
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -309,7 +310,13 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 
 	c.LatencyCrack = payload.Time
 	c.LatencyReturn = m.Timestamp.Sub(timestamp)
-	c.displayJobResults(payload.Password, payload.Err, payload.Time)
+
+	var err error
+	if payload.Err != "" {
+		err = errors.New(payload.Err)
+	}
+
+	c.displayJobResults(payload.Password, err, payload.Time)
 
 	return res, nil
 }
