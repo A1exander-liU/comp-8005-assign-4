@@ -9,15 +9,17 @@ digraph Controller {
   USAGE;
   PARSE_SHADOW_FILE;
   SETUP_SERVER;
+  PARTITION_SEARCHSPACE;
   HANDLE_REGISTRATION;
   SEND_REGISTRATION_CONFIRMATION;
   SEND_JOB;
   SEND_HEARTBEAT;
   HANDLE_JOB_RESULTS;
   DISPLAY_JOB_RESULTS;
+  SEND_STOP;
   CLEANUP;
   EXIT [shape = "doublecircle";];
-  
+
   // Transitions
   START -> PARSE_ARGS [label = "parseArguments";];
   
@@ -30,21 +32,28 @@ digraph Controller {
   PARSE_SHADOW_FILE -> SETUP_SERVER [label = "setupServer";];
   PARSE_SHADOW_FILE -> CLEANUP [label = "cleanup";];
   
-  SETUP_SERVER -> SEND_HEARTBEAT [label = "sendHeartbeat";];
   SETUP_SERVER -> CLEANUP [label = "cleanup";];
-  
-  SEND_HEARTBEAT -> HANDLE_REGISTRATION [label = "handleRegistration"]
+
+  SETUP_SERVER -> PARTITION_SEARCHSPACE [label = "partitionSearchspace";];
+  PARTITION_SEARCHSPACE -> HANDLE_REGISTRATION [label = "handleRegistration"]
   
   HANDLE_REGISTRATION -> SEND_REGISTRATION_CONFIRMATION [label = "sendRegistrationConfirmation";];
-  
+
   SEND_REGISTRATION_CONFIRMATION -> SEND_JOB [label = "sendJob";];
-  
-  SEND_JOB -> HANDLE_JOB_RESULTS [label = "handleJobResults";];
-  
+
+  SEND_JOB -> SEND_HEARTBEAT [label = "sendHeartbeat";];
+
+  SEND_HEARTBEAT -> HANDLE_JOB_RESULTS [label = "handleJobResults";];
+
   HANDLE_JOB_RESULTS -> DISPLAY_JOB_RESULTS [label = "displayJobResults";];
-  
-  DISPLAY_JOB_RESULTS -> CLEANUP [label = "cleanup";];
-  
+
+  DISPLAY_JOB_RESULTS -> HANDLE_CLOSE [label = "handleClose";];
+  HANDLE_CLOSE -> HANDLE_REGISTRATION [label = "handleRegistration";];
+
+  DISPLAY_JOB_RESULTS -> SEND_STOP [label = "sendStop";];
+
+  SEND_STOP -> CLEANUP [label = "cleanup";];
+
   USAGE -> CLEANUP;
   CLEANUP -> EXIT;
 }
