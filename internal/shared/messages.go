@@ -41,6 +41,9 @@ type PayloadJobDetails struct {
 	// A string of individual for the worker to generate candidate passwords from
 	SearchSpace    string
 	PasswordLength int
+
+	ChunkID int
+	Chunk   []string
 }
 
 type PayloadJobResults struct {
@@ -48,6 +51,8 @@ type PayloadJobResults struct {
 	Password string
 	Time     time.Duration
 	Err      error
+
+	ChunkID int
 }
 
 type PayloadHearbeat struct {

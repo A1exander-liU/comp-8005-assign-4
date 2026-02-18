@@ -41,6 +41,7 @@ type Config struct {
 
 type workerConnection struct {
 	Registered bool
+	ChunkID    int
 	Done       chan bool
 
 	Conn   net.Conn
@@ -61,7 +62,7 @@ type Controller struct {
 	listener net.Listener
 	workers  map[string]*workerConnection
 	fs       *flag.FlagSet
-	chunks   map[int]chunk
+	chunks   map[int]*chunk
 
 	ShadowData       shared.ShadowData
 	HeartbeatSeconds int
@@ -188,13 +189,32 @@ func (c *Controller) partitionSearchSpace() {
 	passwords := shared.GenerateCandidatePasswords(shared.SearchSpace, 3)
 	partitions := shared.PartitionArraySize(passwords, c.Config.ChunkSize)
 
-	chunks := make(map[int]chunk, 0)
+	chunks := make(map[int]*chunk, 0)
 	for i, c := range partitions {
-		fmt.Println(i, len(c))
-		chunks[i] = chunk{passwords: c, status: ChunkUnassigned}
+		chunks[i] = &chunk{passwords: c, status: ChunkUnassigned}
 	}
 
 	c.chunks = chunks
+}
+
+// getUnassignedChunk gives a chunk of passwords that hasn't been assigned to another worker.
+//
+// It will return the chunk id and a boolean if the chunk was assigned.
+// In the case that there are no more unassigned chunks, this will return
+// a chunk id of -1 and false
+func (c *Controller) getUnassignedChunk(workerID string) (int, bool) {
+	for chunkID, chunk := range c.chunks {
+		if chunk.status != ChunkUnassigned {
+			continue
+		}
+
+		c.workers[workerID].ChunkID = chunkID
+		c.chunks[chunkID].status = ChunkAssigned
+
+		return chunkID, true
+	}
+
+	return -1, false
 }
 
 // SetupServer starts listening for connections on the specified port.
@@ -240,6 +260,14 @@ func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared
 func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, error) {
 	timestamp := time.Now()
 
+	chunkID, found := c.getUnassignedChunk(conn.RemoteAddr().String())
+	var workerChunk []string
+	if found {
+		workerChunk = c.chunks[chunkID].passwords
+	} else {
+		workerChunk = make([]string, 0)
+	}
+
 	res := shared.Message{
 		Version: shared.MessageVersion, Type: shared.MessageJobDetails, Message: "Cracking details",
 		Timestamp: timestamp,
@@ -249,6 +277,8 @@ func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, e
 			Salt:           c.ShadowData.Salt,
 			Hash:           c.ShadowData.Hash,
 			SearchSpace:    shared.SearchSpace,
+			ChunkID:        chunkID,
+			Chunk:          workerChunk,
 			PasswordLength: 3,
 		},
 	}
@@ -261,12 +291,15 @@ func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, e
 }
 
 func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.Message, error) {
+	timestamp := time.Now()
+
 	payload, ok := m.Payload.(shared.PayloadJobResults)
 	if !ok {
 		return shared.Message{Version: shared.MessageVersion, Type: shared.MessageError, Message: "Bad payload"}, nil
 	}
 
-	timestamp := time.Now()
+	c.chunks[payload.ChunkID].status = ChunkCompleted
+	c.workers[conn.RemoteAddr().String()].ChunkID = -1
 
 	res := shared.Message{
 		Version:   shared.MessageVersion,
