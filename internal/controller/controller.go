@@ -13,6 +13,14 @@ import (
 	"go.uber.org/zap"
 )
 
+type ChunkStatus string
+
+const (
+	ChunkUnassigned = "unassigned"
+	ChunkAssigned   = "assigned"
+	ChunkCompleted  = "completed"
+)
+
 // Config holds parameters for controller setup.
 type Config struct {
 	// Path to the shadowfile
@@ -39,6 +47,11 @@ type workerConnection struct {
 	Router *shared.Router
 }
 
+type chunk struct {
+	passwords []string
+	status    ChunkStatus
+}
+
 // Controller is reponsible for managing worker connections
 // for sending and receiving password cracking jobs.
 type Controller struct {
@@ -48,6 +61,7 @@ type Controller struct {
 	listener net.Listener
 	workers  map[string]*workerConnection
 	fs       *flag.FlagSet
+	chunks   map[int]chunk
 
 	ShadowData       shared.ShadowData
 	HeartbeatSeconds int
@@ -122,11 +136,20 @@ func (c *Controller) HandleArguments(config Config) {
 	}
 
 	c.Config = config
-	c.ParseShadowFile()
+	c.parseShadowFile()
 	c.LatencyParse = time.Since(parseStart)
+	c.partitionSearchSpace()
 }
 
-func (c *Controller) ParseShadowFile() {
+// parseShadowFile reads to the shadowfile to extracted the password hash elements
+// of the desired user.
+//
+// This will return with an error if:
+//
+// - it failed to read the shadowfile
+//
+// - it could not find the user
+func (c *Controller) parseShadowFile() {
 	foundUser := false
 
 	contents, err := os.ReadFile(c.Config.Shadowfile)
@@ -160,6 +183,19 @@ func (c *Controller) ParseShadowFile() {
 		fmt.Println("Failed to find user:", c.Config.Username)
 		os.Exit(1)
 	}
+}
+
+// partitionSearchSpace creates chunks configured through the chunk size CLI argument.
+func (c *Controller) partitionSearchSpace() {
+	passwords := shared.GenerateCandidatePasswords(shared.SearchSpace, 3)
+	partitions := shared.PartitionArray(passwords, c.Config.ChunkSize)
+
+	chunks := make(map[int]chunk, 0)
+	for i, c := range partitions {
+		chunks[i] = chunk{passwords: c, status: ChunkUnassigned}
+	}
+
+	c.chunks = chunks
 }
 
 // SetupServer starts listening for connections on the specified port.
