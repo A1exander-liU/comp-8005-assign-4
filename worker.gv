@@ -10,11 +10,13 @@ digraph Worker {
   SETUP_SERVER;
   SEND_REGISTRATION;
   HANDLE_REGISTRATION_CONFIRMATION;
+  SEND_JOB_REQUEST;
   HANDLE_JOB;
   PARTITION_SEARCHSPACE;
   HANDLE_HEARTBEAT;
   CRACK_PASSWORD;
   SEND_JOB_RESULTS;
+  SEND_CLOSE:
   CLEANUP;
   EXIT [shape = "doublecircle";];
   
@@ -33,7 +35,9 @@ digraph Worker {
   SEND_REGISTRATION -> HANDLE_REGISTRATION_CONFIRMATION [label = "handleRegistrationConfirmation";];
   SEND_REGISTRATION -> CLEANUP [label = "cleanup";];
   
-  HANDLE_REGISTRATION_CONFIRMATION -> HANDLE_JOB [label = "handleJob";];
+  HANDLE_REGISTRATION_CONFIRMATION -> SEND_JOB_REQUEST [label = "sendJobRequest";];
+  
+  SEND_JOB_REQUEST -> HANDLE_JOB [label = "handleJob";];
   
   HANDLE_JOB -> HANDLE_HEARTBEAT [label = "handleHeartbeat";];
   
@@ -43,8 +47,12 @@ digraph Worker {
   
   CRACK_PASSWORD -> SEND_JOB_RESULTS [label = "sendJobResults";];
   
-  SEND_JOB_RESULTS -> CLEANUP [label = "cleanup";];
+  CRACK_PASSWORD -> SEND_CLOSE [label = "handleStop";];
   
+  SEND_JOB_RESULTS -> SEND_JOB_REQUEST [label = "sendJobRequest";];
+  SEND_JOB_RESULTS -> SEND_CLOSE [label = "cleanup";];
+  
+  SEND_CLOSE -> CLEANUP [label = "cleanup";];
   USAGE -> CLEANUP;
   CLEANUP -> EXIT;
 }

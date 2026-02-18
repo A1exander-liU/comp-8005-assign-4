@@ -12,7 +12,7 @@ digraph Controller {
   PARTITION_SEARCHSPACE;
   HANDLE_REGISTRATION;
   SEND_REGISTRATION_CONFIRMATION;
-  SEND_JOB;
+  HANDLE_JOB_REQUEST;
   SEND_HEARTBEAT;
   HANDLE_JOB_RESULTS;
   DISPLAY_JOB_RESULTS;
@@ -39,9 +39,9 @@ digraph Controller {
   
   HANDLE_REGISTRATION -> SEND_REGISTRATION_CONFIRMATION [label = "sendRegistrationConfirmation";];
 
-  SEND_REGISTRATION_CONFIRMATION -> SEND_JOB [label = "sendJob";];
+  SEND_REGISTRATION_CONFIRMATION -> HANDLE_JOB_REQUEST [label = "sendJob";];
 
-  SEND_JOB -> SEND_HEARTBEAT [label = "sendHeartbeat";];
+  HANDLE_JOB_REQUEST -> SEND_HEARTBEAT [label = "sendHeartbeat";];
 
   SEND_HEARTBEAT -> HANDLE_JOB_RESULTS [label = "handleJobResults";];
 
