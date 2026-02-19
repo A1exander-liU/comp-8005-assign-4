@@ -52,8 +52,6 @@ func main() {
 	shared.RegisterMessages()
 
 	cfg := zap.NewDevelopmentConfig()
-	// cfg.OutputPaths = []string{"stdout", "./logs/log"}
-	// cfg.ErrorOutputPaths = []string{"stderr", "./logs/log"}
 
 	logger := zap.Must(cfg.Build())
 
