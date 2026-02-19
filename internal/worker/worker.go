@@ -348,6 +348,7 @@ outer:
 				if err := w.sendClose(); err != nil {
 					break outer
 				}
+				break
 			}
 
 			// Start cracking here
