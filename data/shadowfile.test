@@ -13,6 +13,8 @@ yescryptZ?@:$y$j9T$JCKj7W6w75qsJC6vQqR5V.$plf7ClKLlYfwGdi1rDbvwTDyiLqqGGpv.ylXG5
 md5-abc:$1$FlIQhq9e$jwdSib8QUtOhV7cTC9EgI/
 md5-a#?:$1$Mo1d0dfn$i4fuz5ZWtHc96FgnfT7za.
 md5-456:$1$7Ar6/vw5$zPzOX2uC5PABwGPiBcaxG/
+md5-abcd:$1$RZa4QDbB$uYkSGGA7lfeysfwjMEkyZ1
+md5-?;:$1$ce1zmR3v$psm0HRgjde8K9od/6w.k9.
 
 sha256-abc:$5$U6.xeE5yObf4xy/a$/TLbSfQd.4gHETMtjSscvC5r5Yp60bCKtDHi2E/39S7
 sha256-a#?:$5$FHTdqiirBDo.Zgzu$Z0UPuS2Ik.MwdUW2Kkzv1rXhM8shGLgUvT/1Sb5DhA4
@@ -29,3 +31,4 @@ bcrypt-456:$2b$05$RkByGWB3KjkYV9do5E7zteqr/RZKGpzNfgPVl27aMunoEmk7nSYem
 yescrypt-abc:$y$j9T$5VDqOc9J7gL2fOtNU5lX3/$lJVXz9KmzSza1Z76AsFXgs7MmmraJheMlDVMVEZ.2w4
 yescrypt-a#?:$y$j9T$j65jdggkirBuqAgx.HX0y/$0AwKLVcQArmO/GFDtIVxou8gw/AsPI.01uUwel7eCD8
 yescrypt-456:$y$j9T$QXaPDUTsoaET7OBiTIpvN1$/TVflTnoZkWyhTOMfrBNp0qJ9ASIzkMSBEhanXh2OtA
+yescrypt-abcd:$y$j9T$UFMpJcI4W0ZtJaG/.wydd/$ANFWAy6WhKoG.pQe8AI9DuHoqQOEXZHRd.yeBst8lK0
