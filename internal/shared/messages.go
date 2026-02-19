@@ -39,9 +39,8 @@ type PayloadJobDetails struct {
 	// Password hash details
 	Username, Algorithm, Parameters, Salt, Hash string
 
-	PasswordLength int
-	ChunkID        int
-	Chunk          []string
+	ChunkID              int
+	ChunkStart, ChunkEnd uint64
 }
 
 type PayloadJobResults struct {

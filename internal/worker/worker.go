@@ -218,7 +218,12 @@ func (w *Worker) getTotalAttempts() int {
 }
 
 func (w *Worker) handleJob(payload shared.PayloadJobDetails) {
-	partitions := shared.PartitionArray(payload.Chunk, w.Threads)
+	passwords := []string{}
+	for i := payload.ChunkStart; i < payload.ChunkEnd; i++ {
+		passwords = append(passwords, shared.EncodeBase(i, shared.SearchSpace))
+	}
+
+	partitions := shared.PartitionArray(passwords, w.Threads)
 	fullHash := w.buildHash(payload)
 
 	done := make(chan doneResp, 1)
@@ -340,7 +345,7 @@ outer:
 
 		case shared.MessageJobDetails:
 			payload, _ := m.Payload.(shared.PayloadJobDetails)
-			w.Logger.Info("Received job details", zap.String("algorithm", payload.Algorithm), zap.Int("chunk", len(payload.Chunk)))
+			w.Logger.Info("Received job details", zap.String("algorithm", payload.Algorithm), zap.Uint64("chunk", payload.ChunkEnd-payload.ChunkStart))
 
 			// no more available chunks: exit
 			if payload.ChunkID == -1 {

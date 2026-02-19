@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
@@ -51,8 +52,9 @@ type workerConnection struct {
 }
 
 type chunk struct {
-	passwords []string
-	status    ChunkStatus
+	// start and end index of the passwords (end is exclusive)
+	start, end uint64
+	status     ChunkStatus
 }
 
 // Controller is reponsible for managing worker connections
@@ -64,7 +66,13 @@ type Controller struct {
 	listener net.Listener
 	workers  map[string]*workerConnection
 	fs       *flag.FlagSet
-	chunks   map[int]*chunk
+
+	// starting id of next chunk to generate
+	// id 0 = 0 * chunk size
+	// id 10 = 10 * chunk size
+	nextChunkIDMutex sync.Mutex
+	nextChunkID      int
+	chunks           map[int]*chunk
 
 	ShadowData shared.ShadowData
 	Config     Config
@@ -82,6 +90,7 @@ func NewController(logger *zap.Logger) *Controller {
 		Logger: logger,
 
 		workers: map[string]*workerConnection{},
+		chunks:  map[int]*chunk{},
 	}
 }
 
@@ -140,7 +149,6 @@ func (c *Controller) HandleArguments(config Config) {
 	c.Config = config
 	c.parseShadowFile()
 	c.LatencyParse = time.Since(parseStart)
-	c.partitionSearchSpace()
 }
 
 // parseShadowFile reads to the shadowfile to extracted the password hash elements
@@ -185,37 +193,29 @@ func (c *Controller) parseShadowFile() {
 	}
 }
 
-// partitionSearchSpace creates chunks configured through the chunk size CLI argument.
-func (c *Controller) partitionSearchSpace() {
-	passwords := shared.GenerateCandidatePasswords(shared.SearchSpace, 3)
-	partitions := shared.PartitionArraySize(passwords, c.Config.ChunkSize)
-
-	chunks := make(map[int]*chunk, 0)
-	for i, c := range partitions {
-		chunks[i] = &chunk{passwords: c, status: ChunkUnassigned}
-	}
-
-	c.chunks = chunks
-}
-
 // getUnassignedChunk gives a chunk of passwords that hasn't been assigned to another worker.
 //
 // It will return the chunk id and a boolean if the chunk was assigned.
 // In the case that there are no more unassigned chunks, this will return
 // a chunk id of -1 and false
 func (c *Controller) getUnassignedChunk(workerID string) (int, bool) {
-	for chunkID, chunk := range c.chunks {
-		if chunk.status != ChunkUnassigned {
-			continue
-		}
+	var nextID int
 
-		c.workers[workerID].ChunkID = chunkID
-		c.chunks[chunkID].status = ChunkAssigned
+	c.nextChunkIDMutex.Lock()
+	nextID = c.nextChunkID
+	c.nextChunkID += 1
+	c.nextChunkIDMutex.Unlock()
 
-		return chunkID, true
+	start := uint64(nextID) * uint64(c.Config.ChunkSize)
+	end := start + uint64(c.Config.ChunkSize)
+
+	c.workers[workerID].ChunkID = nextID
+	c.chunks[nextID] = &chunk{
+		start: start, end: end,
+		status: ChunkAssigned,
 	}
 
-	return -1, false
+	return nextID, true
 }
 
 // SetupServer starts listening for connections on the specified port.
@@ -263,25 +263,19 @@ func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared
 func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, error) {
 	timestamp := time.Now()
 
-	chunkID, found := c.getUnassignedChunk(conn.RemoteAddr().String())
-	var workerChunk []string
-	if found {
-		workerChunk = c.chunks[chunkID].passwords
-	} else {
-		workerChunk = make([]string, 0)
-	}
+	chunkID, _ := c.getUnassignedChunk(conn.RemoteAddr().String())
 
 	res := shared.Message{
 		Version: shared.MessageVersion, Type: shared.MessageJobDetails, Message: "Cracking details",
 		Timestamp: timestamp,
 		Payload: shared.PayloadJobDetails{
-			Algorithm:      c.ShadowData.Algorithm,
-			Parameters:     c.ShadowData.Parameters,
-			Salt:           c.ShadowData.Salt,
-			Hash:           c.ShadowData.Hash,
-			ChunkID:        chunkID,
-			Chunk:          workerChunk,
-			PasswordLength: 3,
+			Algorithm:  c.ShadowData.Algorithm,
+			Parameters: c.ShadowData.Parameters,
+			Salt:       c.ShadowData.Salt,
+			Hash:       c.ShadowData.Hash,
+			ChunkID:    chunkID,
+			ChunkStart: c.chunks[chunkID].start,
+			ChunkEnd:   c.chunks[chunkID].end,
 		},
 	}
 
