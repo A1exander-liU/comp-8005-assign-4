@@ -1,6 +1,9 @@
 package main
 
 import (
+	"errors"
+	"net"
+
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/controller"
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 	"go.uber.org/zap"
@@ -29,8 +32,12 @@ func main() {
 
 	for {
 		conn, err := c.AcceptConnection()
+		if errors.Is(err, net.ErrClosed) {
+			return
+		}
 		if err != nil {
 			c.Logger.Info("Failed to accept connection", zap.Error(err))
+			continue
 		}
 
 		go c.HandleConnection(conn)

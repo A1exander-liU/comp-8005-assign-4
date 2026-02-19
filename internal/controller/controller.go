@@ -324,6 +324,10 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 
 	c.displayJobResults(payload.Password, err, payload.Time)
 
+	if err == nil {
+		c.sendStop()
+	}
+
 	return res, nil
 }
 
@@ -339,13 +343,25 @@ func (c *Controller) handleClose(_ shared.Message, conn net.Conn) (shared.Messag
 }
 
 func (c *Controller) displayJobResults(result string, err error, _ time.Duration) {
+	passwordString := ""
 	if err != nil {
-		fmt.Println("PASSWORD: FAILED TO CRACK PASSWORD", err)
+		passwordString = fmt.Sprintf("PASSWORD: FAILED TO CRACK PASSWORD %s", err)
 	} else {
-		fmt.Printf("PASSWORD: %s\n", result)
+		passwordString = fmt.Sprintf("PASSWORD %s", result)
 	}
 
-	c.reportFinalResults()
+	total := c.LatencyParse + c.LatencyDispatch + c.LatencyCrack + c.LatencyReturn
+
+	fmt.Println("==== FINAL RESULTS (seconds) ====")
+	fmt.Println(passwordString)
+	fmt.Println("Parse:", c.LatencyParse.Seconds())
+	fmt.Println("Dispatch:", c.LatencyDispatch.Seconds())
+	fmt.Println("Crack:", c.LatencyCrack.Seconds())
+	fmt.Println("Return:", c.LatencyReturn.Seconds())
+	fmt.Println("Total:", total.Seconds())
+	fmt.Println("=================================")
+
+	// c.reportFinalResults()
 }
 
 func (c *Controller) handleHeartbeat(m shared.Message, conn net.Conn) (shared.Message, error) {
@@ -386,15 +402,48 @@ func (c *Controller) sendHeartbeat(conn net.Conn, period time.Duration) {
 	}
 }
 
+// sendStop sends a stop signal to every registered worker to request
+// every worker to terminate.
+//
+// This will additionally unregister all existing worker connections
+// from the controller.
+func (c *Controller) sendStop() {
+	for _, worker := range c.workers {
+		id := worker.Conn.RemoteAddr().String()
+
+		_, ok := c.workers[id]
+		if ok {
+			delete(c.workers, id)
+		}
+
+		err := worker.Router.Send(shared.Message{
+			Version:   shared.MessageVersion,
+			ID:        id,
+			Type:      shared.MessageClose,
+			Timestamp: time.Now(),
+			Message:   "Sending close",
+		})
+		if err != nil {
+			c.Logger.Error("Failed to send stop signal", zap.String("id", id), zap.Error(err))
+		}
+	}
+
+	c.Logger.Info("Closing controller")
+	if err := c.listener.Close(); err != nil {
+		c.Logger.Error("Failed to close controller", zap.Error(err))
+	}
+}
+
 func (c *Controller) reportFinalResults() {
 	total := c.LatencyParse + c.LatencyDispatch + c.LatencyCrack + c.LatencyReturn
 
-	fmt.Println("FINAL RESULTS (seconds)")
+	fmt.Println("==== FINAL RESULTS (seconds) ====")
 	fmt.Println("Parse:", c.LatencyParse.Seconds())
 	fmt.Println("Dispatch:", c.LatencyDispatch.Seconds())
 	fmt.Println("Crack:", c.LatencyCrack.Seconds())
 	fmt.Println("Return:", c.LatencyReturn.Seconds())
 	fmt.Println("Total:", total.Seconds())
+	fmt.Println("=================================")
 }
 
 // HandleConnection manages communication with a single worker for the
