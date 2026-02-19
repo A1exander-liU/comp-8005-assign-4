@@ -340,14 +340,29 @@ outer:
 
 		case shared.MessageJobDetails:
 			payload, _ := m.Payload.(shared.PayloadJobDetails)
-			w.Logger.Info("Received job details", zap.String("algorithm", payload.Algorithm))
+			w.Logger.Info("Received job details", zap.String("algorithm", payload.Algorithm), zap.Int("chunk", len(payload.Chunk)))
+
+			// no more available chunks: exit
+			if payload.ChunkID == -1 {
+				w.Logger.Info("No more available tasks: exiting")
+				if err := w.sendClose(); err != nil {
+					break outer
+				}
+			}
 
 			// Start cracking here
 			w.Logger.Info("Cracking password...")
 			go w.handleJob(payload)
 
 		case shared.MessageJobResults:
-			err := w.sendClose()
+			payload, _ := m.Payload.(shared.PayloadJobResultsResp)
+
+			var err error
+			if payload.Done {
+				err = w.sendClose()
+			} else {
+				err = w.sendJobRequest()
+			}
 			if err != nil {
 				break outer
 			}

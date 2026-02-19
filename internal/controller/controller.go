@@ -298,6 +298,16 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 		return shared.Message{Version: shared.MessageVersion, Type: shared.MessageError, Message: "Bad payload"}, nil
 	}
 
+	var err error
+	var done bool
+	if payload.Err != "" {
+		err = errors.New(payload.Err)
+		done = false
+	} else {
+		err = nil
+		done = true
+	}
+
 	c.chunks[payload.ChunkID].status = ChunkCompleted
 	c.workers[conn.RemoteAddr().String()].ChunkID = -1
 
@@ -306,15 +316,11 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 		Type:      shared.MessageJobResults,
 		Message:   "Received message details",
 		Timestamp: timestamp,
+		Payload:   shared.PayloadJobResultsResp{Done: done},
 	}
 
 	c.LatencyCrack = payload.Time
 	c.LatencyReturn = m.Timestamp.Sub(timestamp)
-
-	var err error
-	if payload.Err != "" {
-		err = errors.New(payload.Err)
-	}
 
 	c.displayJobResults(payload.Password, err, payload.Time)
 

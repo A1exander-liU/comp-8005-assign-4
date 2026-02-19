@@ -53,6 +53,11 @@ type PayloadJobResults struct {
 	ChunkID int
 }
 
+type PayloadJobResultsResp struct {
+	// Done searching for passwords, indicating to workers the password was found
+	Done bool
+}
+
 type PayloadHearbeat struct {
 	// Number of password candidates tested in total so far
 	TotalTested int
@@ -69,6 +74,7 @@ type PayloadHearbeat struct {
 // Should be called before attempting to send messages.
 func RegisterMessages() {
 	gob.Register(PayloadJobResults{})
+	gob.Register(PayloadJobResultsResp{})
 	gob.Register(PayloadJobDetails{})
 	gob.Register(PayloadHearbeat{})
 }
