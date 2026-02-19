@@ -156,3 +156,39 @@ func CrackPassword(decoder *crypt.Decoder, hash string, characterSet string, len
 
 	return "", errors.New("failed to crack the password")
 }
+
+// EncodeBase generates the string mapped to the given integer of the searchSpace, index
+// starts at 0.
+//
+// If searchSpace was 'abc', n=0 would map to 'a' the 'b' all the way to 'abc'.
+//
+// The strings are generated in lexigraphical order based on the order of the characters
+// in the searchSpace.
+//
+// The generation limit extends up to the max size a uint64 can hold as the length
+// could keep increasing.
+func EncodeBase(n uint64, searchSpace string) string {
+	k := uint64(len(searchSpace))
+
+	// subtract block for each digit
+	// 1) Find the length L such that n falls into the block of L-length strings.
+	//    Blocks sizes: k^1, k^2, k^3, ...
+	L := 1
+	block := k // k^1
+	for n >= block {
+		n -= block
+		L++
+		// next block size *= k  (watch overflow if you go huge)
+		block *= k
+	}
+
+	// 2) Now n is the index within the length-L block: [0 .. k^L-1]
+	//    Convert to base-k with exactly L digits (leading zeros allowed).
+	out := make([]byte, L)
+	for i := L - 1; i >= 0; i-- {
+		d := n % k
+		out[i] = searchSpace[d]
+		n /= k
+	}
+	return string(out)
+}
