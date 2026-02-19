@@ -45,9 +45,9 @@ type PayloadJobDetails struct {
 
 type PayloadJobResults struct {
 	// The cracked password, will be empty if cracking failed
-	Password string
-	Time     time.Duration
-	Err      string
+	Password                string
+	CrackTime, DispatchTime time.Duration
+	Err                     string
 
 	ChunkID int
 }

@@ -121,7 +121,7 @@ func (w *Worker) sendJobRequest() error {
 	return w.send(m)
 }
 
-func (w *Worker) sendJobResults(result string, err error, crackTime time.Duration) error {
+func (w *Worker) sendJobResults(result string, err error, crackTime, dispatchTime time.Duration, chunkID int) error {
 	m := shared.Message{
 		Version:   shared.MessageVersion,
 		ID:        w.ID,
@@ -135,15 +135,19 @@ func (w *Worker) sendJobResults(result string, err error, crackTime time.Duratio
 
 		m.Message = fmt.Sprintf("Sending job results: %s", err.Error())
 		jobResults.Password = ""
-		jobResults.Time = crackTime
+		jobResults.CrackTime = crackTime
+		jobResults.DispatchTime = dispatchTime
 		jobResults.Err = err.Error()
+		jobResults.ChunkID = chunkID
 	} else {
 		w.Logger.Info("Sucessfully cracked password")
 
 		m.Message = "Sending job results: Password cracked"
 		jobResults.Password = result
-		jobResults.Time = crackTime
+		jobResults.CrackTime = crackTime
+		jobResults.DispatchTime = dispatchTime
 		jobResults.Err = ""
+		jobResults.ChunkID = chunkID
 	}
 	m.Payload = jobResults
 
@@ -217,7 +221,7 @@ func (w *Worker) getTotalAttempts() int {
 	return attempts
 }
 
-func (w *Worker) handleJob(payload shared.PayloadJobDetails) {
+func (w *Worker) handleJob(payload shared.PayloadJobDetails, dispatchTime time.Duration) {
 	passwords := []string{}
 	for i := payload.ChunkStart; i < payload.ChunkEnd; i++ {
 		passwords = append(passwords, shared.EncodeBase(i, shared.SearchSpace))
@@ -296,7 +300,7 @@ func (w *Worker) handleJob(payload shared.PayloadJobDetails) {
 	}
 
 	wg.Wait()
-	err := w.sendJobResults(dr.password, dr.err, time.Since(start))
+	err := w.sendJobResults(dr.password, dr.err, time.Since(start), dispatchTime, payload.ChunkID)
 	if err != nil {
 		w.Logger.Error("Failed to send job results", zap.Error(err))
 		w.cleanup()
@@ -358,7 +362,7 @@ outer:
 
 			// Start cracking here
 			w.Logger.Info("Cracking password...")
-			go w.handleJob(payload)
+			go w.handleJob(payload, time.Since(m.Timestamp))
 
 		case shared.MessageJobResults:
 			payload, _ := m.Payload.(shared.PayloadJobResultsResp)

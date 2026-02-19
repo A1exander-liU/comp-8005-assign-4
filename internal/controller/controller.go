@@ -57,6 +57,14 @@ type chunk struct {
 	status     ChunkStatus
 }
 
+type chunkTiming struct {
+	// durations
+	dispatchTime, chunkAssignTime, crackTime, returnTime time.Duration
+
+	// start times for recording across function calls if required
+	dispatchStart, chunkAssignStart, returnTimeStart time.Time
+}
+
 // Controller is reponsible for managing worker connections
 // for sending and receiving password cracking jobs.
 type Controller struct {
@@ -74,6 +82,8 @@ type Controller struct {
 	nextChunkID      int
 	chunks           map[int]*chunk
 
+	chunkTimings map[int]*chunkTiming
+
 	ShadowData shared.ShadowData
 	Config     Config
 
@@ -89,8 +99,9 @@ func NewController(logger *zap.Logger) *Controller {
 	return &Controller{
 		Logger: logger,
 
-		workers: map[string]*workerConnection{},
-		chunks:  map[int]*chunk{},
+		workers:      map[string]*workerConnection{},
+		chunks:       map[int]*chunk{},
+		chunkTimings: map[int]*chunkTiming{},
 	}
 }
 
@@ -264,6 +275,11 @@ func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, e
 	timestamp := time.Now()
 
 	chunkID, _ := c.getUnassignedChunk(conn.RemoteAddr().String())
+	c.chunkTimings[chunkID] = &chunkTiming{
+		dispatchStart:    timestamp,
+		chunkAssignTime:  time.Since(timestamp),
+		chunkAssignStart: timestamp,
+	}
 
 	res := shared.Message{
 		Version: shared.MessageVersion, Type: shared.MessageJobDetails, Message: "Cracking details",
@@ -292,6 +308,10 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 		return shared.Message{Version: shared.MessageVersion, Type: shared.MessageError, Message: "Bad payload"}, nil
 	}
 
+	c.chunkTimings[payload.ChunkID].crackTime = payload.CrackTime
+	c.chunkTimings[payload.ChunkID].dispatchTime = payload.DispatchTime
+	c.chunkTimings[payload.ChunkID].returnTime = time.Since(m.Timestamp)
+
 	var err error
 	var done bool
 	if payload.Err != "" {
@@ -309,14 +329,14 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 		Version:   shared.MessageVersion,
 		Type:      shared.MessageJobResults,
 		Message:   "Received message details",
-		Timestamp: timestamp,
+		Timestamp: time.Now(),
 		Payload:   shared.PayloadJobResultsResp{Done: done},
 	}
 
-	c.LatencyCrack = payload.Time
+	c.LatencyCrack = payload.CrackTime
 	c.LatencyReturn = m.Timestamp.Sub(timestamp)
 
-	c.displayJobResults(payload.Password, err, payload.Time)
+	c.displayJobResults(payload.Password, err, payload.ChunkID)
 
 	if err == nil {
 		c.sendStop()
@@ -336,26 +356,69 @@ func (c *Controller) handleClose(_ shared.Message, conn net.Conn) (shared.Messag
 	return shared.Message{ID: id, Type: shared.MessageClose, Timestamp: time.Now(), Message: message}, nil
 }
 
-func (c *Controller) displayJobResults(result string, err error, _ time.Duration) {
-	passwordString := ""
+func (c *Controller) displayJobResults(result string, err error, chunkID int) {
+	startPassword := shared.EncodeBase(c.chunks[chunkID].start, shared.SearchSpace)
+	endPassword := shared.EncodeBase(c.chunks[chunkID].end, shared.SearchSpace)
+	timings := c.chunkTimings[chunkID]
+
+	var passwordString string
+	chunkString := fmt.Sprintf("==== CHUNK: '%s' to '%s' RESULTS (seconds) ====", startPassword, endPassword)
+
 	if err != nil {
-		passwordString = fmt.Sprintf("PASSWORD: FAILED TO CRACK PASSWORD %s", err)
+		passwordString = fmt.Sprintf("PASSWORD NOT FOUND: %s", err)
 	} else {
-		passwordString = fmt.Sprintf("PASSWORD %s", result)
+		passwordString = fmt.Sprintf("PASSWORD: %s", result)
 	}
 
-	total := c.LatencyParse + c.LatencyDispatch + c.LatencyCrack + c.LatencyReturn
+	c.prettyPrintResults(
+		chunkString,
+		passwordString,
+		c.LatencyParse,
+		timings.dispatchTime,
+		timings.chunkAssignTime,
+		timings.crackTime,
+		timings.returnTime,
+	)
 
-	fmt.Println("==== FINAL RESULTS (seconds) ====")
-	fmt.Println(passwordString)
-	fmt.Println("Parse:", c.LatencyParse.Seconds())
-	fmt.Println("Dispatch:", c.LatencyDispatch.Seconds())
-	fmt.Println("Crack:", c.LatencyCrack.Seconds())
-	fmt.Println("Return:", c.LatencyReturn.Seconds())
+	// report final results if password found
+	if err != nil {
+		return
+	}
+
+	finalString := "==== FINAL RESULTS (seconds) ===="
+	var totaldispatch, totalChunkAssign, totalCrack, totalReturn time.Duration
+	for _, timing := range c.chunkTimings {
+		totaldispatch += timing.dispatchTime
+		totalChunkAssign += timing.chunkAssignTime
+		totalCrack += timing.crackTime
+		totalReturn += timing.returnTime
+	}
+	c.prettyPrintResults(
+		finalString,
+		passwordString,
+		c.LatencyParse,
+		totaldispatch,
+		totalChunkAssign,
+		totalCrack,
+		totalReturn,
+	)
+}
+
+func (c *Controller) prettyPrintResults(
+	title, password string,
+	parse, dispatch, chunkAssign, crack, returnTime time.Duration,
+) {
+	total := parse + dispatch + chunkAssign + crack + returnTime
+
+	fmt.Println(title)
+	fmt.Println(password)
+	fmt.Println("Parse:", parse.Seconds())
+	fmt.Println("Dispatch:", dispatch.Seconds())
+	fmt.Println("ChunkAssign:", chunkAssign.Seconds())
+	fmt.Println("Crack:", crack.Seconds())
+	fmt.Println("Return:", returnTime.Seconds())
 	fmt.Println("Total:", total.Seconds())
 	fmt.Println("=================================")
-
-	// c.reportFinalResults()
 }
 
 func (c *Controller) handleHeartbeat(m shared.Message, conn net.Conn) (shared.Message, error) {
