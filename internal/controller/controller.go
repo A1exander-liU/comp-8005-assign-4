@@ -42,8 +42,9 @@ type Config struct {
 
 type workerConnection struct {
 	Registered bool
-	ChunkID    int
-	Done       chan bool
+	// Current chunk its working on, -1 indicates not working
+	ChunkID int
+	Done    chan bool
 
 	Conn   net.Conn
 	Router *shared.Router
@@ -65,9 +66,8 @@ type Controller struct {
 	fs       *flag.FlagSet
 	chunks   map[int]*chunk
 
-	ShadowData       shared.ShadowData
-	HeartbeatSeconds int
-	Config           Config
+	ShadowData shared.ShadowData
+	Config     Config
 
 	LatencyParse        time.Duration
 	LatencyDispatch     time.Duration
@@ -255,6 +255,8 @@ func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared
 
 	c.LatencyDispatchTime = time.Now()
 
+	go c.sendHeartbeat(conn, time.Duration(c.Config.HeartbeatSeconds)*time.Second)
+
 	return shared.Message{ID: id, Type: shared.MessageRegister, Timestamp: time.Now(), Message: "Registration successful"}, nil
 }
 
@@ -284,8 +286,6 @@ func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, e
 	}
 
 	c.LatencyDispatch = timestamp.Sub(c.LatencyDispatchTime)
-
-	// go c.sendHeartbeat(conn, time.Duration(c.HeartbeatSeconds)*time.Second)
 
 	return res, nil
 }
@@ -393,6 +393,12 @@ func (c *Controller) sendHeartbeat(conn net.Conn, period time.Duration) {
 		case <-worker.Done:
 			return
 		case <-ticker.C:
+			// don't send heartbeat if worker is not working on a task
+			if worker.ChunkID == -1 {
+				break
+			}
+
+			m.Timestamp = time.Now()
 			err := worker.Router.Send(m)
 			if err != nil {
 				ticker.Stop()
@@ -432,18 +438,6 @@ func (c *Controller) sendStop() {
 	if err := c.listener.Close(); err != nil {
 		c.Logger.Error("Failed to close controller", zap.Error(err))
 	}
-}
-
-func (c *Controller) reportFinalResults() {
-	total := c.LatencyParse + c.LatencyDispatch + c.LatencyCrack + c.LatencyReturn
-
-	fmt.Println("==== FINAL RESULTS (seconds) ====")
-	fmt.Println("Parse:", c.LatencyParse.Seconds())
-	fmt.Println("Dispatch:", c.LatencyDispatch.Seconds())
-	fmt.Println("Crack:", c.LatencyCrack.Seconds())
-	fmt.Println("Return:", c.LatencyReturn.Seconds())
-	fmt.Println("Total:", total.Seconds())
-	fmt.Println("=================================")
 }
 
 // HandleConnection manages communication with a single worker for the
