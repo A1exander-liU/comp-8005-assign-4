@@ -309,8 +309,8 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 	}
 
 	c.chunkTimings[payload.ChunkID].crackTime = payload.CrackTime
-	c.chunkTimings[payload.ChunkID].dispatchTime = payload.DispatchTime
-	c.chunkTimings[payload.ChunkID].returnTime = time.Since(m.Timestamp)
+	c.chunkTimings[payload.ChunkID].dispatchTime = payload.DispatchTime.Abs()
+	c.chunkTimings[payload.ChunkID].returnTime = time.Since(m.Timestamp).Abs()
 
 	var err error
 	var done bool
