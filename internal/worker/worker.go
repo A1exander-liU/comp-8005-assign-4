@@ -349,7 +349,7 @@ outer:
 
 		case shared.MessageJobDetails:
 			payload, _ := m.Payload.(shared.PayloadJobDetails)
-			w.Logger.Info("Received job details", zap.String("algorithm", payload.Algorithm), zap.Uint64("chunk", payload.ChunkEnd-payload.ChunkStart))
+			w.Logger.Info("Received job details", zap.String("algorithm", payload.Algorithm), zap.Int("chunk", payload.ChunkID))
 
 			// no more available chunks: exit
 			if payload.ChunkID == -1 {
