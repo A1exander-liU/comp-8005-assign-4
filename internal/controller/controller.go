@@ -83,6 +83,7 @@ type Controller struct {
 	chunks           map[int]*chunk
 
 	chunkTimings map[int]*chunkTiming
+	deltaTimings []int
 
 	ShadowData shared.ShadowData
 	Config     Config
@@ -102,6 +103,7 @@ func NewController(logger *zap.Logger) *Controller {
 		workers:      map[string]*workerConnection{},
 		chunks:       map[int]*chunk{},
 		chunkTimings: map[int]*chunkTiming{},
+		deltaTimings: make([]int, 0),
 	}
 }
 
@@ -402,6 +404,13 @@ func (c *Controller) displayJobResults(result string, err error, chunkID int) {
 		totalCrack,
 		totalReturn,
 	)
+
+	delta := 0
+	for _, d := range c.deltaTimings {
+		delta += d
+	}
+	averageDelta := float64(delta) / float64(len(c.deltaTimings))
+	fmt.Printf("Average Delta (heartbeat/%ds): %f", c.Config.HeartbeatSeconds, averageDelta)
 }
 
 func (c *Controller) prettyPrintResults(
@@ -423,6 +432,8 @@ func (c *Controller) prettyPrintResults(
 
 func (c *Controller) handleHeartbeat(m shared.Message, conn net.Conn) (shared.Message, error) {
 	payload, _ := m.Payload.(shared.PayloadHearbeat)
+
+	c.deltaTimings = append(c.deltaTimings, payload.DeltaTested)
 
 	c.Logger.Info("Heartbeat info",
 		zap.Int("total", payload.TotalTested),
