@@ -84,6 +84,7 @@ type Controller struct {
 
 	chunkTimings map[int]*chunkTiming
 	deltaTimings []int
+	crackStart   *time.Time
 
 	ShadowData shared.ShadowData
 	Config     Config
@@ -104,6 +105,7 @@ func NewController(logger *zap.Logger) *Controller {
 		chunks:       map[int]*chunk{},
 		chunkTimings: map[int]*chunkTiming{},
 		deltaTimings: make([]int, 0),
+		crackStart:   nil,
 	}
 }
 
@@ -275,6 +277,9 @@ func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared
 
 func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, error) {
 	timestamp := time.Now()
+	if c.crackStart == nil {
+		c.crackStart = &timestamp
+	}
 
 	chunkID, _ := c.getUnassignedChunk(conn.RemoteAddr().String())
 	c.chunkTimings[chunkID] = &chunkTiming{
@@ -338,7 +343,7 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 	c.LatencyCrack = payload.CrackTime
 	c.LatencyReturn = m.Timestamp.Sub(timestamp)
 
-	c.displayJobResults(payload.Password, err, payload.ChunkID)
+	c.displayJobResults(payload.Password, err, payload.ChunkID, timestamp)
 
 	if err == nil {
 		c.sendStop()
@@ -358,7 +363,7 @@ func (c *Controller) handleClose(_ shared.Message, conn net.Conn) (shared.Messag
 	return shared.Message{ID: id, Type: shared.MessageClose, Timestamp: time.Now(), Message: message}, nil
 }
 
-func (c *Controller) displayJobResults(result string, err error, chunkID int) {
+func (c *Controller) displayJobResults(result string, err error, chunkID int, ts time.Time) {
 	startPassword := shared.EncodeBase(c.chunks[chunkID].start, shared.SearchSpace)
 	endPassword := shared.EncodeBase(c.chunks[chunkID].end, shared.SearchSpace)
 	timings := c.chunkTimings[chunkID]
@@ -401,7 +406,7 @@ func (c *Controller) displayJobResults(result string, err error, chunkID int) {
 		c.LatencyParse,
 		totaldispatch,
 		totalChunkAssign,
-		totalCrack,
+		ts.Sub(*c.crackStart),
 		totalReturn,
 	)
 
