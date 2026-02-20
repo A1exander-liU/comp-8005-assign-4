@@ -410,7 +410,7 @@ func (c *Controller) displayJobResults(result string, err error, chunkID int) {
 		delta += d
 	}
 	averageDelta := float64(delta) / float64(len(c.deltaTimings))
-	fmt.Printf("Average Delta (heartbeat/%ds): %f", c.Config.HeartbeatSeconds, averageDelta)
+	fmt.Printf("Average Delta (heartbeat/%ds): %f\n", c.Config.HeartbeatSeconds, averageDelta)
 }
 
 func (c *Controller) prettyPrintResults(
