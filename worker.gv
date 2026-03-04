@@ -56,7 +56,7 @@ digraph Worker {
   CRACK_PASSWORD -> SEND_CLOSE [label = "handleStop";];
   
   SEND_JOB_RESULTS -> SEND_JOB_REQUEST [label = "sendJobRequest";];
-  SEND_JOB_RESULTS -> SEND_CLOSE [label = "cleanup";];
+  SEND_JOB_RESULTS -> SEND_CLOSE [label = "sendClose";];
   
   SEND_CLOSE -> CLEANUP [label = "cleanup";];
   USAGE -> CLEANUP;
