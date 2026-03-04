@@ -11,9 +11,11 @@ digraph Worker {
   SEND_REGISTRATION;
   HANDLE_REGISTRATION_CONFIRMATION;
   SEND_JOB_REQUEST;
+  LOAD_CHECKPOINT_STATE;
   HANDLE_JOB;
   PARTITION_SEARCHSPACE;
   HANDLE_HEARTBEAT;
+  SEND_CHECKPOINT;
   CRACK_PASSWORD;
   SEND_JOB_RESULTS;
   SEND_CLOSE:
@@ -39,11 +41,15 @@ digraph Worker {
   
   SEND_JOB_REQUEST -> HANDLE_JOB [label = "handleJob";];
   
-  HANDLE_JOB -> HANDLE_HEARTBEAT [label = "handleHeartbeat";];
+  HANDLE_JOB -> LOAD_CHECKPOINT_STATE [label = "loadCheckpointState";];
   
-  HANDLE_HEARTBEAT -> PARTITION_SEARCHSPACE [label = "partitionSearchspace";];
+  LOAD_CHECKPOINT_STATE -> PARTITION_SEARCHSPACE [label = "partitionSearchspace";];
   
   PARTITION_SEARCHSPACE -> CRACK_PASSWORD [label = "crackPassword";];
+  
+  CRACK_PASSWORD -> HANDLE_HEARTBEAT [label = "handleHeartbeat";];
+  HANDLE_HEARTBEAT -> SEND_CHECKPOINT [label = "sendCheckpoint";];
+  SEND_CHECKPOINT -> CRACK_PASSWORD [label = "crackPassword";];
   
   CRACK_PASSWORD -> SEND_JOB_RESULTS [label = "sendJobResults";];
   
