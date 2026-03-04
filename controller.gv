@@ -14,7 +14,9 @@ digraph Controller {
   SEND_REGISTRATION_CONFIRMATION;
   HANDLE_JOB_REQUEST;
   SEND_HEARTBEAT;
-  HANDLE_JOB_RESULTS;
+  REVOKE_JOB;
+  HANDLE_CHECKPOINT;
+  HANDLE_JOB_RESULTS; 
   DISPLAY_JOB_RESULTS;
   SEND_STOP;
   CLEANUP;
@@ -43,7 +45,11 @@ digraph Controller {
 
   HANDLE_JOB_REQUEST -> SEND_HEARTBEAT [label = "sendHeartbeat";];
 
-  SEND_HEARTBEAT -> HANDLE_JOB_RESULTS [label = "handleJobResults";];
+  SEND_HEARTBEAT -> HANDLE_CHECKPOINT [label = "handleCheckpoint";];
+  SEND_HEARTBEAT -> REVOKE_JOB [label = "revokeJob";];
+  REVOKE_JOB -> HANDLE_CLOSE [label = "handleClose";];
+
+  HANDLE_CHECKPOINT -> HANDLE_JOB_RESULTS [label = "handleJobResults";];
 
   HANDLE_JOB_RESULTS -> DISPLAY_JOB_RESULTS [label = "displayJobResults";];
 
