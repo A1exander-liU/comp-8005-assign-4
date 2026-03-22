@@ -371,16 +371,60 @@ func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, e
 }
 
 func (c *Controller) handleJobCheckpoint(m shared.Message, conn net.Conn) (shared.Message, error) {
+	id := conn.RemoteAddr().String()
+
+	payload, ok := m.Payload.(shared.PayloadCheckpoint)
+	if !ok {
+		err := fmt.Errorf("expected PayloadCheckpoint")
+		return shared.Message{
+				Version:   shared.MessageVersion,
+				ID:        id,
+				Type:      shared.MessageError,
+				Timestamp: time.Now(),
+				Message:   err.Error(),
+			},
+			err
+	}
+
+	c.Logger.Info("received checkpoint", zap.String("worker", id), zap.Int("chunkID", payload.ChunkID))
+
 	return shared.Message{}, nil
 }
 
 func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.Message, error) {
-	timestamp := time.Now()
+	id := conn.RemoteAddr().String()
+	worker, ok := c.workers[id]
+
+	// check if worker is registered
+	if !ok {
+		err := fmt.Errorf("worker %s not registered", id)
+		return shared.Message{
+				Version:   shared.MessageVersion,
+				Type:      shared.MessageError,
+				Timestamp: time.Now(),
+				Message:   err.Error(),
+			},
+			err
+	}
 
 	payload, ok := m.Payload.(shared.PayloadJobResults)
 	if !ok {
 		return shared.Message{Version: shared.MessageVersion, Type: shared.MessageError, Message: "Bad payload"}, nil
 	}
+
+	// check if worker is assigned to the job
+	if worker.ChunkID != payload.ChunkID {
+		err := fmt.Errorf("worker %s is not assigned to chunk %d", id, payload.ChunkID)
+		return shared.Message{
+				Version:   shared.MessageVersion,
+				Type:      shared.MessageError,
+				Timestamp: time.Now(),
+				Message:   err.Error(),
+			},
+			err
+	}
+
+	timestamp := time.Now()
 
 	c.chunkTimings[payload.ChunkID].crackTime = payload.CrackTime
 	c.chunkTimings[payload.ChunkID].dispatchTime = payload.DispatchTime.Abs()
@@ -419,15 +463,23 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 	return res, nil
 }
 
+// handleClose performs cleanup logic after a worker requests to close their connection.
+//
+// This will delete their entry as a worker and also reclaim any ongoing work they have.
 func (c *Controller) handleClose(_ shared.Message, conn net.Conn) (shared.Message, error) {
 	id := conn.RemoteAddr().String()
 	_, ok := c.workers[id]
 	if ok {
+		chunkToReclaim := c.workers[id].ChunkID
+		if chunkToReclaim != -1 {
+			c.chunks[chunkToReclaim].status = ChunkUnassigned
+		}
+
 		delete(c.workers, id)
 	}
 
 	message := fmt.Sprintf("Closing connection for %s", id)
-	return shared.Message{ID: id, Type: shared.MessageClose, Timestamp: time.Now(), Message: message}, nil
+	return shared.Message{Version: shared.MessageVersion, ID: id, Type: shared.MessageClose, Timestamp: time.Now(), Message: message}, nil
 }
 
 func (c *Controller) displayJobResults(result string, err error, chunkID int, ts time.Time) {
