@@ -94,6 +94,7 @@ type PayloadCheckpoint struct {
 //
 // Should be called before attempting to send messages.
 func RegisterMessages() {
+	gob.Register(PayloadRegisterResp{})
 	gob.Register(PayloadJobResults{})
 	gob.Register(PayloadJobResultsResp{})
 	gob.Register(PayloadJobDetails{})
