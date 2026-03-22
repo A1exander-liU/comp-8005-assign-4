@@ -46,11 +46,11 @@ type Config struct {
 }
 
 type workerConnection struct {
+	// Only registered can be sent jobs
 	Registered bool
+
 	// Current chunk its working on, -1 indicates not working
 	ChunkID int
-
-	LastHeartbeat time.Time
 
 	Conn   net.Conn
 	Router *shared.Router
@@ -58,14 +58,20 @@ type workerConnection struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
+	LastHeartbeat time.Time
+
+	// Shared channel for router hook
 	incomingMessages chan shared.Message
 }
 
 type chunk struct {
-	// start and end index of the passwords (end is exclusive)
+	// Start and end index of the passwords (end is exclusive)
 	start, end uint64
-	status     ChunkStatus
-	progress   uint64
+
+	// Assigned means active worker, so can't be assigned
+	// Unassigned means no active worker, so can be assigned
+	// Compeleted means all passwords in chunk tried, so can't be assigned
+	status ChunkStatus
 }
 
 type chunkTiming struct {
@@ -234,8 +240,19 @@ func (c *Controller) parseShadowFile() {
 // In the case that there are no more unassigned chunks, this will return
 // a chunk id of -1 and false
 func (c *Controller) getUnassignedChunk(workerID string) (int, bool) {
-	var nextID int
+	// assign existing chunk first
+	c.nextChunkIDMutex.Lock()
+	for chunkID, chunk := range c.chunks {
+		if chunk.status != ChunkUnassigned {
+			continue
+		}
 
+		c.workers[workerID].ChunkID = chunkID
+		return chunkID, true
+	}
+	c.nextChunkIDMutex.Unlock()
+
+	var nextID int
 	c.nextChunkIDMutex.Lock()
 	nextID = c.nextChunkID
 	c.nextChunkID += 1
@@ -277,6 +294,10 @@ func (c *Controller) AcceptConnection() (net.Conn, error) {
 	return c.listener.Accept()
 }
 
+// handleRegistration updates worker connection information by setting the
+// registered flag.
+//
+// An `MessageError` will be returned if worker already registered.
 func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared.Message, error) {
 	id := conn.RemoteAddr().String()
 	ok := c.workers[id].Registered
@@ -292,13 +313,27 @@ func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared
 	return shared.Message{ID: id, Type: shared.MessageRegister, Timestamp: time.Now(), Message: "Registration successful"}, nil
 }
 
+// sendJob handles sending job details to a worker, only registered workers can receive job details.
 func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, error) {
+	id := conn.RemoteAddr().String()
+	if _, ok := c.workers[id]; !ok {
+		err := fmt.Errorf("worker %s is not registered", id)
+		return shared.Message{
+				Version:   shared.MessageVersion,
+				ID:        id,
+				Type:      shared.MessageError,
+				Timestamp: time.Now(),
+				Message:   err.Error(),
+			},
+			err
+	}
+
 	timestamp := time.Now()
 	if c.crackStart == nil {
 		c.crackStart = &timestamp
 	}
 
-	chunkID, _ := c.getUnassignedChunk(conn.RemoteAddr().String())
+	chunkID, _ := c.getUnassignedChunk(id)
 	c.chunkTimings[chunkID] = &chunkTiming{
 		dispatchStart:    timestamp,
 		chunkAssignTime:  time.Since(timestamp),
