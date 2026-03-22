@@ -2,6 +2,7 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -45,10 +46,16 @@ type workerConnection struct {
 	Registered bool
 	// Current chunk its working on, -1 indicates not working
 	ChunkID int
-	Done    chan bool
+
+	LastHeartbeat time.Time
 
 	Conn   net.Conn
 	Router *shared.Router
+
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	incomingMessages chan shared.Message
 }
 
 type chunk struct {
@@ -266,11 +273,10 @@ func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared
 	}
 
 	c.workers[id].Registered = true
-	c.workers[id].Done = make(chan bool)
 
 	c.LatencyDispatchTime = time.Now()
 
-	go c.sendHeartbeat(conn, time.Duration(c.Config.HeartbeatSeconds)*time.Second)
+	// go c.sendHeartbeat(conn, time.Duration(c.Config.HeartbeatSeconds)*time.Second)
 
 	return shared.Message{ID: id, Type: shared.MessageRegister, Timestamp: time.Now(), Message: "Registration successful"}, nil
 }
@@ -305,6 +311,10 @@ func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, e
 	c.LatencyDispatch = timestamp.Sub(c.LatencyDispatchTime)
 
 	return res, nil
+}
+
+func (c *Controller) handleJobCheckpoint(m shared.Message, conn net.Conn) (shared.Message, error) {
+	return shared.Message{}, nil
 }
 
 func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.Message, error) {
@@ -435,6 +445,9 @@ func (c *Controller) prettyPrintResults(
 	fmt.Println("=================================")
 }
 
+// TODO: need to add some read deadline somehow since the sending and receiving heartbeat
+// are decoupled
+// when worker receives heartbeat they send message to heartbeat path
 func (c *Controller) handleHeartbeat(m shared.Message, conn net.Conn) (shared.Message, error) {
 	payload, _ := m.Payload.(shared.PayloadHearbeat)
 
@@ -449,34 +462,39 @@ func (c *Controller) handleHeartbeat(m shared.Message, conn net.Conn) (shared.Me
 	return shared.Message{}, nil
 }
 
-func (c *Controller) sendHeartbeat(conn net.Conn, period time.Duration) {
-	id := conn.RemoteAddr().String()
-	m := shared.Message{
-		Version:   shared.MessageVersion,
-		ID:        id,
-		Type:      shared.MessageHeartbeat,
-		Timestamp: time.Now(),
-		Message:   "Sending heartbeat",
-	}
-	worker := c.workers[id]
-	ticker := time.NewTicker(period)
+func (c *Controller) processHeartbeat(workerID string) {
+	ticker := time.NewTicker(time.Duration(c.Config.HeartbeatSeconds) * time.Second)
+	worker := c.workers[workerID]
 
 	for {
+		if worker.ChunkID == -1 {
+			continue
+		}
+
 		select {
-		case <-worker.Done:
+		case <-worker.ctx.Done():
+			ticker.Stop()
 			return
+
 		case <-ticker.C:
-			// don't send heartbeat if worker is not working on a task
-			if worker.ChunkID == -1 {
-				break
+			m := shared.Message{
+				Version:   shared.MessageVersion,
+				ID:        workerID,
+				Type:      shared.MessageHeartbeat,
+				Timestamp: time.Now(),
+				Message:   "Heartbeat from controller",
+			}
+			worker.Router.Send(m)
+
+		case m := <-worker.incomingMessages:
+			// only care about heartbeats
+			if m.Type != shared.MessageHeartbeat {
+				continue
 			}
 
-			m.Timestamp = time.Now()
-			err := worker.Router.Send(m)
-			if err != nil {
-				ticker.Stop()
-				return
-			}
+			payload := m.Payload.(shared.PayloadHearbeat)
+			worker.LastHeartbeat = time.Now()
+			c.Logger.Info("Receieved heartbeat", zap.Int("total", payload.TotalTested), zap.Int("delta", payload.DeltaTested))
 		}
 	}
 }
@@ -495,16 +513,13 @@ func (c *Controller) sendStop() {
 			delete(c.workers, id)
 		}
 
-		err := worker.Router.Send(shared.Message{
+		worker.Router.Send(shared.Message{
 			Version:   shared.MessageVersion,
 			ID:        id,
 			Type:      shared.MessageClose,
 			Timestamp: time.Now(),
 			Message:   "Sending close",
 		})
-		if err != nil {
-			c.Logger.Error("Failed to send stop signal", zap.String("id", id), zap.Error(err))
-		}
 	}
 
 	c.Logger.Info("Closing controller")
@@ -519,16 +534,27 @@ func (c *Controller) HandleConnection(conn net.Conn) {
 	r := shared.NewRouter(c.Logger, conn)
 	r.Handle(shared.MessageRegister, c.handleRegistration)
 	r.Handle(shared.MessageJobDetails, c.sendJob)
+	r.Handle(shared.MessageJobCheckpoint, c.handleJobCheckpoint)
 	r.Handle(shared.MessageJobResults, c.handleJobResults)
 	r.Handle(shared.MessageClose, c.handleClose)
-	r.Handle(shared.MessageHeartbeat, c.handleHeartbeat)
 
+	incomingMessages := make(chan shared.Message, 10)
+	r.HookRead(incomingMessages)
+
+	go c.processHeartbeat(conn.RemoteAddr().String())
+
+	ctx, cancel := context.WithCancel(context.Background())
 	c.workers[conn.RemoteAddr().String()] = &workerConnection{
 		Registered: false,
 		Conn:       conn, Router: r,
+		ctx: ctx, cancel: cancel,
+		incomingMessages: incomingMessages,
 	}
 
-	if err := r.Start(); err != nil {
+	if err := r.Start(ctx, cancel); err != nil {
 		c.Logger.Error(err.Error())
 	}
+
+	// worker connection ended
+	// cleanup code goes down here
 }

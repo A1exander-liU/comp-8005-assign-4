@@ -15,12 +15,13 @@ const (
 type MessageType string
 
 const (
-	MessageJobDetails MessageType = "job.details"
-	MessageJobResults MessageType = "job.results"
-	MessageRegister   MessageType = "connection.register"
-	MessageHeartbeat  MessageType = "connection.heartbeat"
-	MessageError      MessageType = "connection.error"
-	MessageClose      MessageType = "connection.close"
+	MessageJobDetails    MessageType = "job.details"
+	MessageJobCheckpoint MessageType = "job.checkpoint"
+	MessageJobResults    MessageType = "job.results"
+	MessageRegister      MessageType = "connection.register"
+	MessageHeartbeat     MessageType = "connection.heartbeat"
+	MessageError         MessageType = "connection.error"
+	MessageClose         MessageType = "connection.close"
 )
 
 type Message struct {

@@ -1,8 +1,8 @@
 package shared
 
 import (
+	"context"
 	"encoding/gob"
-	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -14,17 +14,21 @@ import (
 type Handler func(Message, net.Conn) (Message, error)
 
 type Router struct {
-	ID       string
-	l        *zap.Logger
-	handlers map[MessageType]Handler
+	ID        string
+	l         *zap.Logger
+	handlers  map[MessageType]Handler
+	readHooks []chan Message
 
 	conn net.Conn
 	mu   sync.Mutex
 
+	// Send
 	encoder *gob.Encoder
+	// Receive
 	decoder *gob.Decoder
 
-	done chan bool
+	// Pending messages to write
+	sendChannel chan Message
 }
 
 // NewRouter creates a new router for the associated connection.
@@ -35,33 +39,30 @@ func NewRouter(l *zap.Logger, conn net.Conn) *Router {
 		handlers: map[MessageType]Handler{},
 		conn:     conn,
 
-		// Send
 		encoder: gob.NewEncoder(conn),
-		// Receive
 		decoder: gob.NewDecoder(conn),
 
-		done: make(chan bool),
+		sendChannel: make(chan Message, 64),
 	}
 }
 
 func (r *Router) dispatch(m Message) (Message, error) {
-	start := time.Now()
 	h, ok := r.handlers[m.Type]
 	if !ok {
-		err := fmt.Errorf("unknown message type: %s", m.Type)
-		return Message{ID: m.ID, Type: MessageError, Timestamp: start, Message: err.Error()}, err
+		// start := time.Now()
+		// err := fmt.Errorf("unknown message type: %s", m.Type)
+		// return Message{ID: m.ID, Type: MessageError, Timestamp: start, Message: err.Error()}, err
+		return Message{}, nil
 	}
 
 	return h(m, r.conn)
 }
 
-// Send utilises a mutex to send messages in a thread-safe manner.
+// Send adds a new message that should be sent.
 //
-// Can be used to independently send messages from the router.
-func (r *Router) Send(m Message) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.encoder.Encode(m)
+// Messages are sent through a channel, where they are later asynchronously sent.
+func (r *Router) Send(m Message) {
+	r.sendChannel <- m
 }
 
 // Handle registers a function to be called when a message with the corresponding type is sent.
@@ -74,15 +75,75 @@ func (r *Router) Handle(m MessageType, h Handler) {
 	r.handlers[m] = h
 }
 
+// writeLoop handles sending news sent through the channel.
+func (r *Router) writeLoop(workerCtx context.Context) {
+	for {
+		select {
+		case <-workerCtx.Done():
+			return
+		case message := <-r.sendChannel:
+			if err := r.encoder.Encode(message); err != nil {
+				return
+			}
+		}
+	}
+}
+
+// heartbeatLoop handles sending periodic heartbeats for worker to reply.
+//
+// The `heartbeatInterval` is the number of seconds in between the sending of a heartbeat.
+// The `heartbeatTimeout` is the number of seconds that worker has to respond back before timing
+// out the connection.
+func (r *Router) heartbeatLoop(workerCtx context.Context) {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-workerCtx.Done():
+			return
+		case <-ticker.C:
+			r.Send(Message{
+				Version:   "1.0.0",
+				ID:        r.ID,
+				Type:      MessageHeartbeat,
+				Timestamp: time.Now(),
+				Message:   "Heartbeat from controller",
+			})
+		}
+	}
+}
+
+// HookRead attaches a function that can receive a copy of messages sent from the connection.
+//
+// Once a new message is received, the hook will be called, passing the messsage to it.
+func (r *Router) HookRead(hook chan Message) {
+	r.readHooks = append(r.readHooks, hook)
+}
+
 // Start listens for messages in a loop, responding using the registered handlers.
 //
 // call 'Router.Handle' for desired routes to handle before calling this method.
 //
 // An error is returned during failure to read or write from the connection.
-func (r *Router) Start() error {
+func (r *Router) Start(ctx context.Context, cancel context.CancelFunc) error {
+	// read loop routes message to handlers
+	// handlers return a message that are sent a channel
+	// write loop selects over the channel to send the messages to the connection
+	//
+	// reads and writes are cenralized
+	// how to decouple heartbeats
+	// - need to record last heartbeat time to calc time since last heartbeat
+	// - need to hook to when messages are received
+
+	defer cancel()
+	go r.writeLoop(ctx)
+
 	for {
 		var message Message
 
+		// read messages from workers
+		// handle closed connection and other errors
 		err := r.decoder.Decode(&message)
 		if err == io.EOF {
 			r.l.Info("EOF: Connection closed")
@@ -92,24 +153,30 @@ func (r *Router) Start() error {
 			return err
 		}
 
-		m := fmt.Sprintf("From %s", r.ID)
-		r.l.Info(m, zap.String("type", string(message.Type)), zap.String("message", message.Message), zap.Time("timestamp", message.Timestamp))
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			// m := fmt.Sprintf("From %s", r.ID)
+			// r.l.Info(m, zap.String("type", string(message.Type)), zap.String("message", message.Message), zap.Time("timestamp", message.Timestamp))
+		}
 
+		// read hooks
+		for _, hook := range r.readHooks {
+			hook <- message
+		}
+
+		// Dispatch returns a message to be sent
+		// skip empty messages
 		res, _ := r.dispatch(message)
 		if res == (Message{}) {
 			continue
 		}
 
-		err = r.Send(res)
-		if res.Type == MessageClose {
-			r.l.Info("Req: Connection closed")
-			return r.conn.Close()
-		}
-		if err != nil {
-			return err
-		}
+		// Add the message to the channel
+		r.Send(res)
 
-		m = fmt.Sprintf("To %s", r.ID)
-		r.l.Info(m, zap.String("type", string(res.Type)), zap.String("message", res.Message), zap.Time("timestamp", res.Timestamp))
+		// m := fmt.Sprintf("To %s", r.ID)
+		// r.l.Info(m, zap.String("type", string(res.Type)), zap.String("message", res.Message), zap.Time("timestamp", res.Timestamp))
 	}
 }
