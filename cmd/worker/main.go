@@ -52,6 +52,7 @@ func main() {
 	shared.RegisterMessages()
 
 	cfg := zap.NewDevelopmentConfig()
+	cfg.DisableCaller = true
 
 	logger := zap.Must(cfg.Build())
 
