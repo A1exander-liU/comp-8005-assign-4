@@ -40,6 +40,9 @@ type Config struct {
 
 	// Cracking job size for workers
 	ChunkSize int
+
+	// Number of passwords attempts before worker should send a checkpoint
+	CheckpointAttempts int
 }
 
 type workerConnection struct {
@@ -62,6 +65,7 @@ type chunk struct {
 	// start and end index of the passwords (end is exclusive)
 	start, end uint64
 	status     ChunkStatus
+	progress   uint64
 }
 
 type chunkTiming struct {
@@ -87,7 +91,9 @@ type Controller struct {
 	// id 10 = 10 * chunk size
 	nextChunkIDMutex sync.Mutex
 	nextChunkID      int
-	chunks           map[int]*chunk
+
+	// ChunkID to chunk data
+	chunks map[int]*chunk
 
 	chunkTimings map[int]*chunkTiming
 	deltaTimings []int
@@ -126,6 +132,7 @@ func (c *Controller) ParseArguments() Config {
 	fs.IntVar(&config.Port, "p", 0, "port number to listen on")
 	fs.IntVar(&config.HeartbeatSeconds, "b", 0, "period (in seconds) to send a heartbeat")
 	fs.IntVar(&config.ChunkSize, "c", 0, "chunk size of each cracking task for a worker")
+	fs.IntVar(&config.CheckpointAttempts, "k", 0, "number of attempts before worker sends a checkpoint")
 	c.fs = fs
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -164,6 +171,12 @@ func (c *Controller) HandleArguments(config Config) {
 
 	if config.ChunkSize < 1 {
 		fmt.Println("Error: -c must be a non-zero positive integer")
+		c.fs.Usage()
+		os.Exit(1)
+	}
+
+	if config.CheckpointAttempts < 1 {
+		fmt.Println("Error: -k must be a non-zero positive integer")
 		c.fs.Usage()
 		os.Exit(1)
 	}
