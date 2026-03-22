@@ -443,6 +443,7 @@ func (c *Controller) prettyPrintResults(
 	fmt.Println("Return:", returnTime.Seconds())
 	fmt.Println("Total:", total.Seconds())
 	fmt.Println("=================================")
+	fmt.Println()
 }
 
 // TODO: need to add some read deadline somehow since the sending and receiving heartbeat
