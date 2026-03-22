@@ -36,6 +36,12 @@ type ShadowData struct {
 	Username, Algorithm, Parameters, Salt, Hash string
 }
 
+// PayloadRegisterResp contains configuration values to be sent
+// to a worker.
+type PayloadRegisterResp struct {
+	HeartbeatSeconds, CheckpointAttempts int
+}
+
 type PayloadJobDetails struct {
 	// Password hash details
 	Username, Algorithm, Parameters, Salt, Hash string

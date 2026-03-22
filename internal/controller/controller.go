@@ -310,7 +310,18 @@ func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared
 
 	c.LatencyDispatchTime = time.Now()
 
-	return shared.Message{ID: id, Type: shared.MessageRegister, Timestamp: time.Now(), Message: "Registration successful"}, nil
+	return shared.Message{
+			Version:   shared.MessageVersion,
+			ID:        id,
+			Type:      shared.MessageRegister,
+			Timestamp: time.Now(),
+			Message:   "Registration successful",
+			Payload: shared.PayloadRegisterResp{
+				HeartbeatSeconds:   c.Config.HeartbeatSeconds,
+				CheckpointAttempts: c.Config.CheckpointAttempts,
+			},
+		},
+		nil
 }
 
 // sendJob handles sending job details to a worker, only registered workers can receive job details.
