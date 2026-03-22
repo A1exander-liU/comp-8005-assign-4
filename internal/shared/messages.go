@@ -42,6 +42,8 @@ type PayloadJobDetails struct {
 
 	ChunkID              int
 	ChunkStart, ChunkEnd uint64
+
+	HeartbeatSeconds, CheckpointAttempts int
 }
 
 type PayloadJobResults struct {
@@ -69,6 +71,19 @@ type PayloadHearbeat struct {
 	ActiveThreads int
 }
 
+type PayloadCheckpoint struct {
+	ChunkID int
+
+	// Progress made since last checkpoint
+	// Progress is an array of length two arrays
+	// Each array is for each thread which shows start and end indices of attempted passwords
+	// [ [ start, end ], ... ]
+	CurrentProgress [][]int
+
+	// Number of attempted passwords
+	CurrentTested int
+}
+
 // RegisterMessages registers the message structs to enable decoding of any types.
 //
 // Should be called before attempting to send messages.
@@ -77,4 +92,5 @@ func RegisterMessages() {
 	gob.Register(PayloadJobResultsResp{})
 	gob.Register(PayloadJobDetails{})
 	gob.Register(PayloadHearbeat{})
+	gob.Register(PayloadCheckpoint{})
 }
