@@ -289,8 +289,6 @@ func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared
 
 	c.LatencyDispatchTime = time.Now()
 
-	// go c.sendHeartbeat(conn, time.Duration(c.Config.HeartbeatSeconds)*time.Second)
-
 	return shared.Message{ID: id, Type: shared.MessageRegister, Timestamp: time.Now(), Message: "Registration successful"}, nil
 }
 
@@ -457,23 +455,6 @@ func (c *Controller) prettyPrintResults(
 	fmt.Println("Total:", total.Seconds())
 	fmt.Println("=================================")
 	fmt.Println()
-}
-
-// TODO: need to add some read deadline somehow since the sending and receiving heartbeat
-// are decoupled
-// when worker receives heartbeat they send message to heartbeat path
-func (c *Controller) handleHeartbeat(m shared.Message, conn net.Conn) (shared.Message, error) {
-	payload, _ := m.Payload.(shared.PayloadHearbeat)
-
-	c.deltaTimings = append(c.deltaTimings, payload.DeltaTested)
-
-	c.Logger.Info("Heartbeat info",
-		zap.Int("total", payload.TotalTested),
-		zap.Int("delta", payload.DeltaTested),
-		zap.Int("activeThreads", payload.ActiveThreads),
-	)
-
-	return shared.Message{}, nil
 }
 
 func (c *Controller) processHeartbeat(workerID string) {
