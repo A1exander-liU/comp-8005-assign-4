@@ -3,10 +3,9 @@ package shared
 import (
 	"context"
 	"encoding/gob"
+	"fmt"
 	"io"
 	"net"
-	"sync"
-	"time"
 
 	"go.uber.org/zap"
 )
@@ -20,7 +19,6 @@ type Router struct {
 	readHooks []chan Message
 
 	conn net.Conn
-	mu   sync.Mutex
 
 	// Send
 	encoder *gob.Encoder
@@ -83,33 +81,9 @@ func (r *Router) writeLoop(workerCtx context.Context) {
 			return
 		case message := <-r.sendChannel:
 			if err := r.encoder.Encode(message); err != nil {
+				r.l.Error("failed to send", zap.Error(err))
 				return
 			}
-		}
-	}
-}
-
-// heartbeatLoop handles sending periodic heartbeats for worker to reply.
-//
-// The `heartbeatInterval` is the number of seconds in between the sending of a heartbeat.
-// The `heartbeatTimeout` is the number of seconds that worker has to respond back before timing
-// out the connection.
-func (r *Router) heartbeatLoop(workerCtx context.Context) {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-workerCtx.Done():
-			return
-		case <-ticker.C:
-			r.Send(Message{
-				Version:   "1.0.0",
-				ID:        r.ID,
-				Type:      MessageHeartbeat,
-				Timestamp: time.Now(),
-				Message:   "Heartbeat from controller",
-			})
 		}
 	}
 }
@@ -176,7 +150,7 @@ func (r *Router) Start(ctx context.Context, cancel context.CancelFunc) error {
 		// Add the message to the channel
 		r.Send(res)
 
-		// m := fmt.Sprintf("To %s", r.ID)
-		// r.l.Info(m, zap.String("type", string(res.Type)), zap.String("message", res.Message), zap.Time("timestamp", res.Timestamp))
+		m := fmt.Sprintf("To %s", r.ID)
+		r.l.Info(m, zap.String("type", string(res.Type)), zap.String("message", res.Message), zap.Time("timestamp", res.Timestamp))
 	}
 }
