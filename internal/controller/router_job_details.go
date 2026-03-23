@@ -1,0 +1,55 @@
+package controller
+
+import (
+	"fmt"
+	"net"
+	"time"
+
+	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
+)
+
+// sendJob handles sending job details to a worker, only registered workers can receive job details.
+func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, error) {
+	id := conn.RemoteAddr().String()
+	if _, ok := c.workers[id]; !ok {
+		err := fmt.Errorf("worker %s is not registered", id)
+		return shared.Message{
+				Version:   shared.MessageVersion,
+				ID:        id,
+				Type:      shared.MessageError,
+				Timestamp: time.Now(),
+				Message:   err.Error(),
+			},
+			err
+	}
+
+	timestamp := time.Now()
+	if c.crackStart == nil {
+		c.crackStart = &timestamp
+	}
+
+	chunkID, _ := c.getUnassignedChunk(id)
+	c.chunkTimings[chunkID] = &chunkTiming{
+		dispatchStart:    timestamp,
+		chunkAssignTime:  time.Since(timestamp),
+		chunkAssignStart: timestamp,
+	}
+
+	res := shared.Message{
+		Version: shared.MessageVersion, Type: shared.MessageJobDetails, Message: "Cracking details",
+		Timestamp: timestamp,
+		Payload: shared.PayloadJobDetails{
+			Algorithm:  c.ShadowData.Algorithm,
+			Parameters: c.ShadowData.Parameters,
+			Salt:       c.ShadowData.Salt,
+			Hash:       c.ShadowData.Hash,
+			ChunkID:    chunkID,
+			ChunkStart: c.chunks[chunkID].start,
+			ChunkEnd:   c.chunks[chunkID].end,
+		},
+	}
+
+	c.LatencyDispatch = timestamp.Sub(c.LatencyDispatchTime)
+
+	return res, nil
+}
