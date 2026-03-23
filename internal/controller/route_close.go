@@ -19,5 +19,12 @@ func (c *Controller) handleClose(_ shared.Message, conn net.Conn) (shared.Messag
 	}
 
 	message := fmt.Sprintf("Closing connection for %s", id)
-	return shared.Message{Version: shared.MessageVersion, ID: id, Type: shared.MessageClose, Timestamp: time.Now(), Message: message}, nil
+	return shared.Message{
+			Version:   shared.MessageVersion,
+			ID:        id,
+			Type:      shared.MessageClose,
+			Timestamp: time.Now(),
+			Message:   message,
+		},
+		nil
 }

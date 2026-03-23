@@ -187,21 +187,29 @@ func (c *Controller) AcceptConnection() (net.Conn, error) {
 	return c.listener.Accept()
 }
 
+// processHeartbeat handles sending heartbeats to workers to determine their liveliness.
+//
+// A heartbeat is sent periodically based on the heartbeat seconds if the worker is actively
+// working on a job. It keeps a counter of heartbeats sent, resetting when it receives a reply.
+//
+// If the worker doesn't respond before a subsequent heartbeat (heartbeats since reply > 1), the
+// worker is identified as unresponsive, and their current job will be revoked. Any job results
+// or checkpoints sent will be rejected; the worker must request a new job.
 func (c *Controller) processHeartbeat(workerID string) {
 	ticker := time.NewTicker(time.Duration(c.Config.HeartbeatSeconds) * time.Second)
 	worker := c.workers[workerID]
 
 	for {
-		if worker.ChunkID == -1 {
-			continue
-		}
-
 		select {
 		case <-worker.ctx.Done():
 			ticker.Stop()
 			return
 
 		case <-ticker.C:
+			if worker.ChunkID == -1 {
+				continue
+			}
+
 			m := shared.Message{
 				Version:   shared.MessageVersion,
 				ID:        workerID,
