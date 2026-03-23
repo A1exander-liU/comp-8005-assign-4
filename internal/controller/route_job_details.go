@@ -9,6 +9,9 @@ import (
 )
 
 // sendJob handles sending job details to a worker, only registered workers can receive job details.
+//
+// An error will be returned in the message if:
+//   - The worker is not registered
 func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, error) {
 	id := conn.RemoteAddr().String()
 	if _, ok := c.workers[id]; !ok {
@@ -16,11 +19,12 @@ func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, e
 		return shared.Message{
 				Version:   shared.MessageVersion,
 				ID:        id,
-				Type:      shared.MessageError,
+				Type:      shared.MessageJobDetails,
 				Timestamp: time.Now(),
-				Message:   err.Error(),
+				Message:   "Job assignment failed",
+				Err:       err,
 			},
-			err
+			nil
 	}
 
 	timestamp := time.Now()
@@ -36,7 +40,7 @@ func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, e
 	}
 
 	res := shared.Message{
-		Version: shared.MessageVersion, Type: shared.MessageJobDetails, Message: "Cracking details",
+		Version: shared.MessageVersion, ID: id, Type: shared.MessageJobDetails, Message: "Job assignment successful",
 		Timestamp: timestamp,
 		Payload: shared.PayloadJobDetails{
 			Algorithm:  c.ShadowData.Algorithm,
