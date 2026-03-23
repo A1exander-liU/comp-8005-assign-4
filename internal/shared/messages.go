@@ -24,14 +24,37 @@ const (
 	MessageClose         MessageType = "connection.close"
 )
 
+// Message the data protocol between the controller and worker.
 type Message struct {
-	Version   string
-	ID        string
-	Type      MessageType
+	// Protcol version
+	Version string
+
+	// Worker id (this a address port string)
+	ID string
+
+	// Indicate the communication, `Payload` will change according to this
+	Type MessageType
+
+	// Time the message was sent
 	Timestamp time.Time
-	Message   string
-	Payload   any
+
+	// Descriptive text
+	Message string
+
+	// Indicates if the request failed to successfully complete.
+	// This is meant to be checked when receiving a response.
+	Err error
+
+	// `Type` indicates the struct used.
+	//
+	// Accessing the payload can be done with:
+	//
+	// payload, ok := message.Payload.(PayloadHearbeat)
+	//
+	// where `PayloadHearbeat` would be desired type of the payload.
+	Payload any
 }
+
 type ShadowData struct {
 	Username, Algorithm, Parameters, Salt, Hash string
 }
