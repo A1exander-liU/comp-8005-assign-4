@@ -1,6 +1,8 @@
 package shared
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -10,6 +12,19 @@ import (
 
 	"github.com/go-crypt/crypt"
 )
+
+func UUID() (string, error) {
+	u := make([]byte, 16)
+	_, err := rand.Read(u)
+	if err != nil {
+		return "", err
+	}
+
+	u[8] = (u[8] | 0x80) & 0xBF // what does this do?
+	u[6] = (u[6] | 0x40) & 0x4F // what does this do?
+
+	return hex.EncodeToString(u), nil
+}
 
 // ParseAddress builds an IP:Port string. An empty string is returned if parsing failed.
 func ParseAddress(ip string, port int) string {

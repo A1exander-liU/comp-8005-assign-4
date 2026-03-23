@@ -3,14 +3,12 @@ package controller
 import (
 	"errors"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 )
 
-func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.Message, error) {
-	id := conn.RemoteAddr().String()
+func (c *Controller) handleJobResults(m shared.Message, id string) (shared.Message, error) {
 	worker, ok := c.workers[id]
 
 	// check if worker is registered
@@ -60,7 +58,7 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 	}
 
 	c.chunks[payload.ChunkID].status = ChunkCompleted
-	c.workers[conn.RemoteAddr().String()].ChunkID = -1
+	c.workers[id].ChunkID = -1
 
 	res := shared.Message{
 		Version:   shared.MessageVersion,

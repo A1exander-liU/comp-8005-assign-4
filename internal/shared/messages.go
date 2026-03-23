@@ -20,6 +20,7 @@ const (
 	MessageJobResults    MessageType = "job.results"
 	MessageRegister      MessageType = "connection.register"
 	MessageHeartbeat     MessageType = "connection.heartbeat"
+	MessageReconnect     MessageType = "connection.reconnect"
 	MessageClose         MessageType = "connection.close"
 )
 
@@ -112,6 +113,10 @@ type PayloadCheckpoint struct {
 	CurrentTested int
 }
 
+type PayloadReconnect struct {
+	ID string
+}
+
 // RegisterMessages registers the message structs to enable decoding of any types.
 //
 // Should be called before attempting to send messages.
@@ -122,4 +127,5 @@ func RegisterMessages() {
 	gob.Register(PayloadJobDetails{})
 	gob.Register(PayloadHearbeat{})
 	gob.Register(PayloadCheckpoint{})
+	gob.Register(PayloadReconnect{})
 }

@@ -2,7 +2,6 @@ package controller
 
 import (
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
@@ -12,8 +11,7 @@ import (
 //
 // An error will be returned in the message if:
 //   - The worker is not registered
-func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, error) {
-	id := conn.RemoteAddr().String()
+func (c *Controller) sendJob(_ shared.Message, id string) (shared.Message, error) {
 	if !c.workers[id].Registered {
 		err := fmt.Sprintf("worker %s is not registered", id)
 		return shared.Message{

@@ -2,7 +2,6 @@ package controller
 
 import (
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
@@ -11,8 +10,7 @@ import (
 // handleClose performs cleanup logic after a worker requests to close their connection.
 //
 // This will delete their entry as a worker and also reclaim any ongoing work they have.
-func (c *Controller) handleClose(_ shared.Message, conn net.Conn) (shared.Message, error) {
-	id := conn.RemoteAddr().String()
+func (c *Controller) handleClose(_ shared.Message, id string) (shared.Message, error) {
 	if worker, ok := c.workers[id]; ok {
 		c.revokeJob(id, worker.ChunkID)
 		delete(c.workers, id)

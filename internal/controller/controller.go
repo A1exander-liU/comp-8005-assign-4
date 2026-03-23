@@ -276,26 +276,28 @@ func (c *Controller) sendStop() {
 // HandleConnection manages communication with a single worker for the
 // whole entire lifecycle.
 func (c *Controller) HandleConnection(conn net.Conn) {
-	r := shared.NewRouter(c.Logger, conn)
+	id, _ := shared.UUID()
+
+	r := shared.NewRouterWithID(c.Logger, conn, id)
 	r.Handle(shared.MessageRegister, c.handleRegistration)
 	r.Handle(shared.MessageJobDetails, c.sendJob)
 	r.Handle(shared.MessageJobCheckpoint, c.handleJobCheckpoint)
 	r.Handle(shared.MessageJobResults, c.handleJobResults)
 	r.Handle(shared.MessageClose, c.handleClose)
+	r.Handle(shared.MessageReconnect, c.handleReconnect)
 
 	incomingMessages := make(chan shared.Message, 10)
 	r.HookRead(incomingMessages)
 
-	go c.processHeartbeat(conn.RemoteAddr().String())
-
 	ctx, cancel := context.WithCancel(context.Background())
-	c.workers[conn.RemoteAddr().String()] = &workerConnection{
+	c.workers[id] = &workerConnection{
 		Registered: false,
 		Conn:       conn, Router: r,
 		ctx: ctx, cancel: cancel,
 		incomingMessages: incomingMessages,
 	}
 
+	go c.processHeartbeat(id)
 	if err := r.Start(ctx, cancel); err != nil {
 		c.Logger.Error(err.Error())
 	}

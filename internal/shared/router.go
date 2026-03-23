@@ -10,7 +10,14 @@ import (
 	"go.uber.org/zap"
 )
 
-type Handler func(Message, net.Conn) (Message, error)
+// Handler is a function to register under the [shared.Router.Handle] for responding
+// to a specific message type.
+//
+// The handler is provided with:
+//   - the sent message
+//   - the connection
+//   - the id of the router/sender
+type Handler func(Message, string) (Message, error)
 
 type Router struct {
 	ID        string
@@ -30,9 +37,26 @@ type Router struct {
 }
 
 // NewRouter creates a new router for the associated connection.
+//
+// By default, the [net.Conn.RemoteAddr] is used as the ID.
 func NewRouter(l *zap.Logger, conn net.Conn) *Router {
 	return &Router{
 		ID:       conn.RemoteAddr().String(),
+		l:        l,
+		handlers: map[MessageType]Handler{},
+		conn:     conn,
+
+		encoder: gob.NewEncoder(conn),
+		decoder: gob.NewDecoder(conn),
+
+		sendChannel: make(chan Message, 64),
+	}
+}
+
+// NewRouterWithID creates a new router using the specific id value.
+func NewRouterWithID(l *zap.Logger, conn net.Conn, id string) *Router {
+	return &Router{
+		ID:       id,
 		l:        l,
 		handlers: map[MessageType]Handler{},
 		conn:     conn,
@@ -53,7 +77,7 @@ func (r *Router) dispatch(m Message) (Message, error) {
 		return Message{}, nil
 	}
 
-	return h(m, r.conn)
+	return h(m, r.ID)
 }
 
 // Send adds a new message that should be sent.

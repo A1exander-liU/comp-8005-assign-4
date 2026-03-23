@@ -2,7 +2,6 @@ package controller
 
 import (
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
@@ -14,9 +13,7 @@ import (
 //
 // An error will be returned in the message if (the checkpoint will be rejected):
 //   - The worker reporting is not currently assigned to the job
-func (c *Controller) handleJobCheckpoint(m shared.Message, conn net.Conn) (shared.Message, error) {
-	id := conn.RemoteAddr().String()
-
+func (c *Controller) handleJobCheckpoint(m shared.Message, id string) (shared.Message, error) {
 	payload := m.Payload.(shared.PayloadCheckpoint)
 	if payload.ChunkID != c.workers[id].ChunkID {
 		err := fmt.Sprintf("worker %s is not assigned to chunk %d", id, payload.ChunkID)

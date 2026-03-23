@@ -2,7 +2,6 @@ package controller
 
 import (
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
@@ -13,8 +12,7 @@ import (
 //
 // An error will be in the returned message if:
 //   - The worker has already been registered
-func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared.Message, error) {
-	id := conn.RemoteAddr().String()
+func (c *Controller) handleRegistration(m shared.Message, id string) (shared.Message, error) {
 	ok := c.workers[id].Registered
 
 	if ok {
