@@ -140,7 +140,7 @@ func (c *Controller) getUnassignedChunk(workerID string) (int, bool) {
 			continue
 		}
 
-		c.workers[workerID].ChunkID = chunkID
+		c.assignJob(workerID, chunkID)
 		return chunkID, true
 	}
 	c.nextChunkIDMutex.Unlock()
@@ -151,14 +151,7 @@ func (c *Controller) getUnassignedChunk(workerID string) (int, bool) {
 	c.nextChunkID += 1
 	c.nextChunkIDMutex.Unlock()
 
-	start := uint64(nextID) * uint64(c.Config.ChunkSize)
-	end := start + uint64(c.Config.ChunkSize)
-
-	c.workers[workerID].ChunkID = nextID
-	c.chunks[nextID] = &chunk{
-		start: start, end: end,
-		status: ChunkAssigned,
-	}
+	c.assignJob(workerID, nextID)
 
 	return nextID, true
 }
@@ -489,9 +482,7 @@ func (c *Controller) processHeartbeat(workerID string) {
 				message := fmt.Sprintf("worker %s failed to respond to heartbeart", workerID)
 
 				c.Logger.Warn(message)
-				chunkToReclaim := worker.ChunkID
-				worker.ChunkID = -1
-				c.chunks[chunkToReclaim].status = ChunkUnassigned
+				c.revokeJob(workerID, worker.ChunkID)
 			}
 
 			worker.HeartbeatsSinceReply = 0
