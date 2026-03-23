@@ -9,23 +9,29 @@ import (
 	"go.uber.org/zap"
 )
 
+// handleJobCheckpoint updates chunk cracking progress to allow subsequent workers to continue
+// from previously recorded progress.
+//
+// An error will be returned in the message if (the checkpoint will be rejected):
+//   - The worker reporting is not currently assigned to the job
 func (c *Controller) handleJobCheckpoint(m shared.Message, conn net.Conn) (shared.Message, error) {
 	id := conn.RemoteAddr().String()
 
-	payload, ok := m.Payload.(shared.PayloadCheckpoint)
-	if !ok {
-		err := fmt.Errorf("expected PayloadCheckpoint")
+	payload := m.Payload.(shared.PayloadCheckpoint)
+	if payload.ChunkID != c.workers[id].ChunkID {
+		err := fmt.Errorf("worker %s is not assigned to chunk %d", id, payload.ChunkID)
 		return shared.Message{
 				Version:   shared.MessageVersion,
 				ID:        id,
-				Type:      shared.MessageError,
+				Type:      shared.MessageJobCheckpoint,
 				Timestamp: time.Now(),
-				Message:   err.Error(),
+				Message:   "Job checkpoint rejected",
+				Err:       err,
 			},
-			err
+			nil
 	}
 
-	c.Logger.Info("received checkpoint", zap.String("worker", id), zap.Int("chunkID", payload.ChunkID))
+	c.Logger.Info("Received checkpoint", zap.String("worker", id), zap.Int("chunkID", payload.ChunkID))
 
 	return shared.Message{}, nil
 }
