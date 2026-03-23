@@ -134,9 +134,11 @@ func NewController(logger *zap.Logger) *Controller {
 
 // getUnassignedChunk gives a chunk of passwords that hasn't been assigned to another worker.
 //
-// It will return the chunk id and a boolean if the chunk was assigned.
-// In the case that there are no more unassigned chunks, this will return
-// a chunk id of -1 and false
+// An existing unassigned chunk will be searched for first before creating a new chunk.
+//
+// It returns the chunk id and a boolean if the chunk was assigned.
+//
+// In the case, a chunk couldn't be assigned, this will return a chunk id of -1 and false.
 func (c *Controller) getUnassignedChunk(workerID string) (int, bool) {
 	// assign existing chunk first
 	c.nextChunkIDMutex.Lock()

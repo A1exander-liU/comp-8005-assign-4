@@ -20,7 +20,6 @@ const (
 	MessageJobResults    MessageType = "job.results"
 	MessageRegister      MessageType = "connection.register"
 	MessageHeartbeat     MessageType = "connection.heartbeat"
-	MessageError         MessageType = "connection.error"
 	MessageClose         MessageType = "connection.close"
 )
 
@@ -45,13 +44,13 @@ type Message struct {
 	// This is meant to be checked when receiving a response.
 	Err error
 
-	// `Type` indicates the struct used.
+	// Type indicates the struct used.
 	//
 	// Accessing the payload can be done with:
 	//
-	// payload, ok := message.Payload.(PayloadHearbeat)
+	// 	payload, ok := message.Payload.(PayloadHearbeat)
 	//
-	// where `PayloadHearbeat` would be desired type of the payload.
+	// where PayloadHearbeat would be desired type of the payload.
 	Payload any
 }
 
