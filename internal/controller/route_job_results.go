@@ -18,26 +18,27 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 		err := fmt.Errorf("worker %s not registered", id)
 		return shared.Message{
 				Version:   shared.MessageVersion,
-				Type:      shared.MessageError,
+				ID:        id,
+				Type:      shared.MessageJobResults,
 				Timestamp: time.Now(),
-				Message:   err.Error(),
+				Message:   "Job results rejected",
+				Err:       err,
 			},
 			nil
 	}
 
-	payload, ok := m.Payload.(shared.PayloadJobResults)
-	if !ok {
-		return shared.Message{Version: shared.MessageVersion, Type: shared.MessageError, Message: "Bad payload"}, nil
-	}
+	payload := m.Payload.(shared.PayloadJobResults)
 
 	// check if worker is assigned to the job
 	if worker.ChunkID != payload.ChunkID {
 		err := fmt.Errorf("worker %s is not assigned to chunk %d", id, payload.ChunkID)
 		return shared.Message{
 				Version:   shared.MessageVersion,
-				Type:      shared.MessageError,
+				ID:        id,
+				Type:      shared.MessageJobResults,
 				Timestamp: time.Now(),
-				Message:   err.Error(),
+				Message:   "Job results rejected",
+				Err:       err,
 			},
 			nil
 	}
@@ -63,9 +64,10 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 
 	res := shared.Message{
 		Version:   shared.MessageVersion,
+		ID:        id,
 		Type:      shared.MessageJobResults,
-		Message:   "Received message details",
 		Timestamp: time.Now(),
+		Message:   "Job results accepted",
 		Payload:   shared.PayloadJobResultsResp{Done: done},
 	}
 
