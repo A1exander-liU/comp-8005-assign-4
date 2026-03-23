@@ -1,4 +1,10 @@
 // Package controller contains class for controller
+//
+// This consists of:
+//   - cli which has arg parsing related logic
+//   - display for printing timing results
+//   - jobs for handling assigning jobs to workers
+//   - routes which are handlers for different message types
 package controller
 
 import (
