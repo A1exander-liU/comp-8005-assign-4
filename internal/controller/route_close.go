@@ -13,13 +13,8 @@ import (
 // This will delete their entry as a worker and also reclaim any ongoing work they have.
 func (c *Controller) handleClose(_ shared.Message, conn net.Conn) (shared.Message, error) {
 	id := conn.RemoteAddr().String()
-	_, ok := c.workers[id]
-	if ok {
-		chunkToReclaim := c.workers[id].ChunkID
-		if chunkToReclaim != -1 {
-			c.chunks[chunkToReclaim].status = ChunkUnassigned
-		}
-
+	if worker, ok := c.workers[id]; ok {
+		c.revokeJob(id, worker.ChunkID)
 		delete(c.workers, id)
 	}
 
