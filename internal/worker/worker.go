@@ -4,12 +4,12 @@ package worker
 import (
 	"encoding/gob"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -55,6 +55,10 @@ type Worker struct {
 	totalAttempts    int
 	lastAttemptsSent int
 	mu               sync.Mutex
+
+	Config Config
+
+	fs *flag.FlagSet
 }
 
 // NewWorker creates a new worker with the provided logger instance.
@@ -68,8 +72,8 @@ func NewWorker(logger *zap.Logger) *Worker {
 // SetupServer creates a connection with the controller.
 //
 // This will exit with an error if it failed to connect.
-func (w *Worker) SetupServer(config Config) {
-	address := net.JoinHostPort(config.ControllerIP, strconv.Itoa(config.ControllerPort))
+func (w *Worker) SetupServer() {
+	address := net.JoinHostPort(w.Config.ControllerIP, strconv.Itoa(w.Config.ControllerPort))
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
@@ -79,7 +83,7 @@ func (w *Worker) SetupServer(config Config) {
 
 	w.Logger.Info(fmt.Sprintf("Connected to controller at %s", address))
 	w.ID = conn.LocalAddr().String()
-	w.Threads = config.Threads
+	w.Threads = w.Config.Threads
 	w.conn = conn
 	w.encoder = gob.NewEncoder(w.conn)
 	w.decoder = gob.NewDecoder(w.conn)
@@ -168,6 +172,7 @@ func (w *Worker) sendClose() error {
 
 // Sending back heartbeat messages
 func (w *Worker) handleHeartbeat() error {
+	time.Sleep(3 * time.Second)
 	total := w.getTotalAttempts()
 	delta := total - w.lastAttemptsSent
 
@@ -184,25 +189,6 @@ func (w *Worker) handleHeartbeat() error {
 	w.lastAttemptsSent = total
 
 	return w.send(m)
-}
-
-func (w *Worker) buildHash(payload shared.PayloadJobDetails) string {
-	sections := make([]string, 0)
-	if payload.Algorithm != "" {
-		sections = append(sections, fmt.Sprintf("$%s", payload.Algorithm))
-	}
-	if payload.Parameters != "" {
-		sections = append(sections, payload.Parameters)
-	}
-	if payload.Salt != "" {
-		sections = append(sections, payload.Salt)
-	}
-	if payload.Hash != "" {
-		sections = append(sections, payload.Hash)
-	}
-
-	fullHash := strings.Join(sections, "$")
-	return fullHash
 }
 
 func (w *Worker) incTotalAttempts() {
@@ -384,6 +370,7 @@ outer:
 			}
 
 		case shared.MessageError:
+			w.Logger.Info("received error message")
 			break outer
 
 		case shared.MessageClose:
