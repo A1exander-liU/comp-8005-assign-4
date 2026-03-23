@@ -404,7 +404,7 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 				Timestamp: time.Now(),
 				Message:   err.Error(),
 			},
-			err
+			nil
 	}
 
 	payload, ok := m.Payload.(shared.PayloadJobResults)
@@ -421,7 +421,7 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 				Timestamp: time.Now(),
 				Message:   err.Error(),
 			},
-			err
+			nil
 	}
 
 	timestamp := time.Now()
@@ -593,6 +593,9 @@ func (c *Controller) processHeartbeat(workerID string) {
 
 			// failed to respond to heartbeat in time, revoke the job
 			if worker.HeartbeatsSinceReply > 1 {
+				message := fmt.Sprintf("worker %s failed to respond to heartbeart", workerID)
+
+				c.Logger.Warn(message)
 				chunkToReclaim := worker.ChunkID
 				worker.ChunkID = -1
 				c.chunks[chunkToReclaim].status = ChunkUnassigned
