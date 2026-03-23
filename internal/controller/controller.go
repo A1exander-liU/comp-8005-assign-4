@@ -58,7 +58,7 @@ type workerConnection struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	LastHeartbeat time.Time
+	HeartbeatsSinceReply int
 
 	// Shared channel for router hook
 	incomingMessages chan shared.Message
@@ -578,6 +578,7 @@ func (c *Controller) processHeartbeat(workerID string) {
 				Message:   "Heartbeat from controller",
 			}
 			worker.Router.Send(m)
+			worker.HeartbeatsSinceReply += 1
 
 		case m := <-worker.incomingMessages:
 			// only care about heartbeats
@@ -586,8 +587,18 @@ func (c *Controller) processHeartbeat(workerID string) {
 			}
 
 			payload := m.Payload.(shared.PayloadHearbeat)
-			worker.LastHeartbeat = time.Now()
+
 			c.Logger.Info("Receieved heartbeat", zap.Int("total", payload.TotalTested), zap.Int("delta", payload.DeltaTested))
+			c.deltaTimings = append(c.deltaTimings, payload.DeltaTested)
+
+			// failed to respond to heartbeat in time, revoke the job
+			if worker.HeartbeatsSinceReply > 1 {
+				chunkToReclaim := worker.ChunkID
+				worker.ChunkID = -1
+				c.chunks[chunkToReclaim].status = ChunkUnassigned
+			}
+
+			worker.HeartbeatsSinceReply = 0
 		}
 	}
 }
