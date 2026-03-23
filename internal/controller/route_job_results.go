@@ -15,7 +15,7 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 
 	// check if worker is registered
 	if !ok {
-		err := fmt.Errorf("worker %s not registered", id)
+		err := fmt.Sprintf("worker %s not registered", id)
 		return shared.Message{
 				Version:   shared.MessageVersion,
 				ID:        id,
@@ -31,7 +31,7 @@ func (c *Controller) handleJobResults(m shared.Message, conn net.Conn) (shared.M
 
 	// check if worker is assigned to the job
 	if worker.ChunkID != payload.ChunkID {
-		err := fmt.Errorf("worker %s is not assigned to chunk %d", id, payload.ChunkID)
+		err := fmt.Sprintf("worker %s is not assigned to chunk %d", id, payload.ChunkID)
 		return shared.Message{
 				Version:   shared.MessageVersion,
 				ID:        id,

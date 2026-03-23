@@ -19,7 +19,7 @@ func (c *Controller) handleJobCheckpoint(m shared.Message, conn net.Conn) (share
 
 	payload := m.Payload.(shared.PayloadCheckpoint)
 	if payload.ChunkID != c.workers[id].ChunkID {
-		err := fmt.Errorf("worker %s is not assigned to chunk %d", id, payload.ChunkID)
+		err := fmt.Sprintf("worker %s is not assigned to chunk %d", id, payload.ChunkID)
 		return shared.Message{
 				Version:   shared.MessageVersion,
 				ID:        id,

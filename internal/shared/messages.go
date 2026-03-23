@@ -42,7 +42,7 @@ type Message struct {
 
 	// Indicates if the request failed to successfully complete.
 	// This is meant to be checked when receiving a response.
-	Err error
+	Err string
 
 	// Type indicates the struct used.
 	//

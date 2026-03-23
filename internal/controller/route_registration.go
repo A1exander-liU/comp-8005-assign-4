@@ -18,7 +18,7 @@ func (c *Controller) handleRegistration(m shared.Message, conn net.Conn) (shared
 	ok := c.workers[id].Registered
 
 	if ok {
-		err := fmt.Errorf("worker %s is already registered", id)
+		err := fmt.Sprintf("worker %s is already registered", id)
 		return shared.Message{
 				Version:   shared.MessageVersion,
 				ID:        id,

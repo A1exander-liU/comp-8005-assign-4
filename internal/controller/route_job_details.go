@@ -14,8 +14,8 @@ import (
 //   - The worker is not registered
 func (c *Controller) sendJob(_ shared.Message, conn net.Conn) (shared.Message, error) {
 	id := conn.RemoteAddr().String()
-	if _, ok := c.workers[id]; !ok {
-		err := fmt.Errorf("worker %s is not registered", id)
+	if !c.workers[id].Registered {
+		err := fmt.Sprintf("worker %s is not registered", id)
 		return shared.Message{
 				Version:   shared.MessageVersion,
 				ID:        id,
