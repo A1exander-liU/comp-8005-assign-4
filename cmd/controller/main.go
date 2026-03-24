@@ -7,6 +7,7 @@ import (
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/controller"
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func main() {
@@ -14,6 +15,8 @@ func main() {
 
 	cfg := zap.NewDevelopmentConfig()
 	cfg.DisableCaller = true
+	cfg.Level.SetLevel(zapcore.InfoLevel)
+
 	logger := zap.Must(cfg.Build())
 
 	c := controller.NewController(logger)

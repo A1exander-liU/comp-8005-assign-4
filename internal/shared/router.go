@@ -174,7 +174,7 @@ func (r *Router) Start(ctx context.Context, cancel context.CancelFunc) error {
 		// Add the message to the channel
 		r.Send(res)
 
-		m := fmt.Sprintf("To %s", r.ID)
-		r.l.Info(m, zap.String("type", string(res.Type)), zap.String("message", res.Message), zap.Time("timestamp", res.Timestamp))
+		m := fmt.Sprintf("To %s", r.conn.RemoteAddr().String())
+		r.l.Debug(m, zap.String("type", string(res.Type)), zap.String("message", res.Message), zap.Time("timestamp", res.Timestamp))
 	}
 }

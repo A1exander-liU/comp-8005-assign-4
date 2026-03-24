@@ -4,6 +4,7 @@ import (
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/worker"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func main() {
@@ -11,6 +12,7 @@ func main() {
 
 	cfg := zap.NewDevelopmentConfig()
 	cfg.DisableCaller = true
+	cfg.Level.SetLevel(zapcore.InfoLevel)
 
 	logger := zap.Must(cfg.Build())
 
@@ -19,5 +21,6 @@ func main() {
 	worker.HandleArguments(&config)
 
 	worker.SetupServer()
-	worker.HandleConnection()
+	worker.Start()
+	// worker.HandleConnection()
 }
