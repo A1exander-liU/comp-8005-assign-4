@@ -41,13 +41,15 @@ func (c *Controller) sendJob(_ shared.Message, id string) (shared.Message, error
 		Version: shared.MessageVersion, ID: id, Type: shared.MessageJobDetails, Message: "Job assignment successful",
 		Timestamp: timestamp,
 		Payload: shared.PayloadJobDetails{
-			Algorithm:  c.ShadowData.Algorithm,
-			Parameters: c.ShadowData.Parameters,
-			Salt:       c.ShadowData.Salt,
-			Hash:       c.ShadowData.Hash,
-			ChunkID:    chunkID,
-			ChunkStart: c.chunks[chunkID].start,
-			ChunkEnd:   c.chunks[chunkID].end,
+			Algorithm:          c.ShadowData.Algorithm,
+			Parameters:         c.ShadowData.Parameters,
+			Salt:               c.ShadowData.Salt,
+			Hash:               c.ShadowData.Hash,
+			ChunkID:            chunkID,
+			ChunkStart:         c.chunks[chunkID].start,
+			ChunkEnd:           c.chunks[chunkID].end,
+			HeartbeatSeconds:   c.Config.HeartbeatSeconds,
+			CheckpointAttempts: c.Config.CheckpointAttempts,
 		},
 	}
 
