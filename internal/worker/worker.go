@@ -2,6 +2,7 @@
 package worker
 
 import (
+	"context"
 	"encoding/gob"
 	"errors"
 	"flag"
@@ -48,10 +49,12 @@ type Worker struct {
 
 	Threads int
 
+	router  *shared.Router
 	conn    net.Conn
 	encoder *gob.Encoder
 	decoder *gob.Decoder
 
+	state            WorkerState
 	totalAttempts    int
 	lastAttemptsSent int
 	mu               sync.Mutex
@@ -172,7 +175,6 @@ func (w *Worker) sendClose() error {
 
 // Sending back heartbeat messages
 func (w *Worker) handleHeartbeat() error {
-	time.Sleep(3 * time.Second)
 	total := w.getTotalAttempts()
 	delta := total - w.lastAttemptsSent
 
@@ -298,6 +300,48 @@ func (w *Worker) cleanup() {
 	_ = w.conn.Close()
 }
 
+func (w *Worker) Start() {
+	ctx, cancel := context.WithCancel(context.Background())
+	router := shared.NewRouter(w.Logger, w.conn)
+
+	router.Handle(shared.MessageRegister, w.routeRegister)
+	router.Handle(shared.MessageReconnect, w.routeReconnect)
+	router.Handle(shared.MessageJobDetails, w.routeJobDetails)
+	router.Handle(shared.MessageJobResults, w.routeJobResults)
+	router.Handle(shared.MessageHeartbeat, w.routeHeartbeat)
+	router.Handle(shared.MessageClose, w.routeClose)
+
+	w.router = router
+
+	// load existing state if any and reconnect
+	// if loading state or reconnection fails, registration is done instead
+
+	state, err := LoadState("./data/data.json")
+	w.state = state
+
+	if err != nil {
+		w.Logger.Warn("Failed to load state", zap.Error(err))
+		w.router.Send(shared.Message{
+			Version:   shared.MessageVersion,
+			Type:      shared.MessageRegister,
+			Timestamp: time.Now(),
+			Message:   "Registration request",
+		})
+	} else {
+		w.router.Send(shared.Message{
+			Version:   shared.MessageVersion,
+			Type:      shared.MessageReconnect,
+			Timestamp: time.Now(),
+			Message:   "Reconnection request",
+			Payload:   shared.PayloadReconnect{ID: state.ID},
+		})
+	}
+
+	if err := router.Start(ctx, cancel); err != nil {
+		w.cleanup()
+	}
+}
+
 // HandleConnection handles worker lifecycle of sending and receiving to and from the controller.
 func (w *Worker) HandleConnection() {
 	// cracking job goes into thread
@@ -317,6 +361,7 @@ outer:
 
 		err := w.decoder.Decode(&m)
 		if err == io.EOF {
+			w.Logger.Info("connection closed")
 			break outer
 		}
 		if err != nil {
@@ -369,14 +414,11 @@ outer:
 				break outer
 			}
 
-		case shared.MessageError:
-			w.Logger.Info("received error message")
-			break outer
-
 		case shared.MessageClose:
 			break outer
 		}
 	}
 
+	w.Logger.Info("initiating cleanup")
 	w.cleanup()
 }
