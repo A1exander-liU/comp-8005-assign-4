@@ -1,11 +1,11 @@
 package shared
 
 import (
-	"crypto/rand"
-	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -13,17 +13,38 @@ import (
 	"github.com/go-crypt/crypt"
 )
 
-func UUID() (string, error) {
-	u := make([]byte, 16)
-	_, err := rand.Read(u)
+// WriteToJSON writes a struct to a JSON file.
+//
+// An error will return in case of failure to marshal
+// data into bytes or writing the bytes to the file.
+func WriteToJSON(path string, data any) error {
+	dataBytes, err := json.Marshal(data)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	u[8] = (u[8] | 0x80) & 0xBF // what does this do?
-	u[6] = (u[6] | 0x40) & 0x4F // what does this do?
+	if err := os.WriteFile(path, dataBytes, os.ModePerm); err != nil {
+		return err
+	}
 
-	return hex.EncodeToString(u), nil
+	return nil
+}
+
+// ReadFromJSON reads a JSON file into a struct.
+//
+// An error will be returned in case of failure to read the file
+// or unmarshal the bytes to a struct.
+func ReadFromJSON(path string, dst any) error {
+	dataBytes, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(dataBytes, dst); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ParseAddress builds an IP:Port string. An empty string is returned if parsing failed.
