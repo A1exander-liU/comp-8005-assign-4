@@ -14,6 +14,32 @@ type WorkerState struct {
 	Payload shared.PayloadJobDetails `json:"payload"`
 }
 
+func (w *Worker) getTotalAttempts() int {
+	// send heartbeat, update the lastAttemptsSent
+	// during crash lastAttemptsSent will be reset to 0
+	// during reconnect set it current total
+	var attempts int
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	attempts = len(w.state.CompeletedPasswords)
+	return attempts
+}
+
+func (w *Worker) addAttempt(passwordIndex uint64) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.state.CompeletedPasswords[passwordIndex] = true
+}
+
+func (w *Worker) getAttempt(passwordIndex uint64) (bool, bool) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	result, ok := w.state.CompeletedPasswords[passwordIndex]
+	return result, ok
+}
+
 func LoadState(path string) (WorkerState, error) {
 	var state WorkerState
 

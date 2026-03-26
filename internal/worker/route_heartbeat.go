@@ -3,9 +3,16 @@ package worker
 import "github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 
 func (w *Worker) routeHeartbeat(m shared.Message, s string) (shared.Message, error) {
+	w.Logger.Info(m.Message)
+
+	total := w.getTotalAttempts()
+	delta := total - w.lastAttemptsSent
+
+	w.lastAttemptsSent = total
+
 	return shared.Message{
 			Type:    shared.MessageHeartbeat,
-			Payload: shared.PayloadHearbeat{TotalTested: 0, DeltaTested: 0, ActiveThreads: w.Config.Threads},
+			Payload: shared.PayloadHearbeat{TotalTested: total, DeltaTested: delta, ActiveThreads: w.Config.Threads},
 		},
 		nil
 }

@@ -71,7 +71,7 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 			case passwordRequest := <-passwordRequests:
 				// find next uncompleted password
 				for {
-					if _, ok := w.state.CompeletedPasswords[passwordIndex]; ok {
+					if _, ok := w.getAttempt(passwordIndex); ok {
 						passwordIndex += 1
 					} else {
 						break
@@ -85,9 +85,9 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 
 				passwordRequest.resp <- passwordIndex
 			case result := <-done:
-				w.state.CompeletedPasswords[result.passwordIndex] = true
+				w.addAttempt(result.passwordIndex)
 
-				if len(w.state.CompeletedPasswords)%payload.CheckpointAttempts == 0 {
+				if w.getTotalAttempts()%payload.CheckpointAttempts == 0 {
 					fmt.Printf("[leader] checkpoint %d\n", checkpoint)
 					checkpoint += 1
 				}
