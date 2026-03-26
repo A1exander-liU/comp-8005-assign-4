@@ -62,7 +62,7 @@ type ShadowData struct {
 // PayloadRegisterResp contains configuration values to be sent
 // to a worker.
 type PayloadRegisterResp struct {
-	HeartbeatSeconds, CheckpointAttempts int
+	ID string
 }
 
 type PayloadJobDetails struct {

@@ -39,8 +39,7 @@ func (c *Controller) handleRegistration(m shared.Message, id string) (shared.Mes
 			Timestamp: time.Now(),
 			Message:   "Registration successful",
 			Payload: shared.PayloadRegisterResp{
-				HeartbeatSeconds:   c.Config.HeartbeatSeconds,
-				CheckpointAttempts: c.Config.CheckpointAttempts,
+				ID: id,
 			},
 		},
 		nil
