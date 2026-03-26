@@ -67,12 +67,18 @@ type PayloadRegisterResp struct {
 
 type PayloadJobDetails struct {
 	// Password hash details
-	Username, Algorithm, Parameters, Salt, Hash string
+	Username   string `json:"username"`
+	Algorithm  string `json:"algorithm"`
+	Parameters string `json:"parameters"`
+	Salt       string `json:"salt"`
+	Hash       string `json:"hash"`
 
-	ChunkID              int
-	ChunkStart, ChunkEnd uint64
+	ChunkID    int    `json:"chunk_id"`
+	ChunkStart uint64 `json:"chunk_start"`
+	ChunkEnd   uint64 `json:"chunk_end"`
 
-	HeartbeatSeconds, CheckpointAttempts int
+	HeartbeatSeconds   int `json:"heartbeat_seconds"`
+	CheckpointAttempts int `json:"checkpoint_attempts"`
 }
 
 type PayloadJobResults struct {

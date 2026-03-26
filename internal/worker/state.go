@@ -2,11 +2,14 @@ package worker
 
 import "github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 
+const StateFileLocation string = "data/state.json"
+
 type WorkerState struct {
-	ID              string  `json:"id"`
-	ChunkID         int     `json:"chunk_id"`
-	PasswordIndex   int     `json:"password_index"`
-	CurrentProgress [][]int `json:"current_progress"`
+	ID            string `json:"id"`
+	ChunkID       int    `json:"chunk_id"`
+	PasswordIndex int    `json:"password_index"`
+
+	Payload shared.PayloadJobDetails `json:"payload"`
 }
 
 func LoadState(path string) (WorkerState, error) {
@@ -25,18 +28,18 @@ func SaveState(path string, state WorkerState) error {
 
 func InitialState() WorkerState {
 	return WorkerState{
-		ID:              "",
-		ChunkID:         0,
-		PasswordIndex:   0,
-		CurrentProgress: [][]int{},
+		ID:            "",
+		ChunkID:       0,
+		PasswordIndex: 0,
+		Payload:       shared.PayloadJobDetails{},
 	}
 }
 
 func InitialStateWithID(id string) WorkerState {
 	return WorkerState{
-		ID:              id,
-		ChunkID:         0,
-		PasswordIndex:   0,
-		CurrentProgress: [][]int{},
+		ID:            id,
+		ChunkID:       0,
+		PasswordIndex: 0,
+		Payload:       shared.PayloadJobDetails{},
 	}
 }
