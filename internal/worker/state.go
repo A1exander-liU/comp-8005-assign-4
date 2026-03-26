@@ -9,6 +9,8 @@ type WorkerState struct {
 	ChunkID       int    `json:"chunk_id"`
 	PasswordIndex int    `json:"password_index"`
 
+	CompeletedPasswords map[int]bool `json:"completed_passwords"`
+
 	Payload shared.PayloadJobDetails `json:"payload"`
 }
 
@@ -28,18 +30,20 @@ func SaveState(path string, state WorkerState) error {
 
 func InitialState() WorkerState {
 	return WorkerState{
-		ID:            "",
-		ChunkID:       0,
-		PasswordIndex: 0,
-		Payload:       shared.PayloadJobDetails{},
+		ID:                  "",
+		ChunkID:             0,
+		PasswordIndex:       0,
+		CompeletedPasswords: map[int]bool{},
+		Payload:             shared.PayloadJobDetails{},
 	}
 }
 
 func InitialStateWithID(id string) WorkerState {
 	return WorkerState{
-		ID:            id,
-		ChunkID:       0,
-		PasswordIndex: 0,
-		Payload:       shared.PayloadJobDetails{},
+		ID:                  id,
+		ChunkID:             0,
+		PasswordIndex:       0,
+		CompeletedPasswords: map[int]bool{},
+		Payload:             shared.PayloadJobDetails{},
 	}
 }

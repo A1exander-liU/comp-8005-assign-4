@@ -30,11 +30,12 @@ func (w *Worker) buildHash(payload shared.PayloadJobDetails) string {
 }
 
 type passwordRequest struct {
-	resp chan int
+	resp chan uint64
 }
 
 type passwordResponse struct {
-	password string
+	password      string
+	passwordIndex uint64
 }
 
 // HandleJobV1 performs password cracking utilizing a shared password index. Each thread will
@@ -64,15 +65,27 @@ func (w *Worker) HandleJobV1(payload shared.PayloadJobDetails, dispatchTime time
 
 	loop:
 		for passwordIndex := payload.ChunkStart; passwordIndex < payload.ChunkEnd; passwordIndex++ {
-			if ((passwordIndex-payload.ChunkStart)+1)%uint64(payload.CheckpointAttempts) == 0 {
+			// skip already completed passwords
+			if _, ok := w.state.CompeletedPasswords[int(passwordIndex)]; ok {
+				continue
+			}
+
+			n := len(w.state.CompeletedPasswords)
+			if n > 0 && n%payload.CheckpointAttempts == 0 {
 				checkpoint += 1
 				fmt.Printf("[leader] checkpoint %d\n", checkpoint)
 			}
 
 			select {
 			case passwordRequest := <-passwordRequests:
-				passwordRequest.resp <- int(passwordIndex)
+				passwordRequest.resp <- passwordIndex
 			case result := <-done:
+				w.state.CompeletedPasswords[int(result.passwordIndex)] = true
+
+				if result.password == "" {
+					continue
+				}
+
 				password = result.password
 				fmt.Printf("[leader] password found: %s\n", result.password)
 				break loop
@@ -90,24 +103,27 @@ func (w *Worker) HandleJobV1(payload shared.PayloadJobDetails, dispatchTime time
 
 	// worker threads
 	for i := range w.Config.Threads {
+		workerThreadID := i + 1
 		wg.Go(func() {
 			for {
-				passwordRequest := passwordRequest{resp: make(chan int)}
+				passwordRequest := passwordRequest{resp: make(chan uint64)}
 				passwordRequests <- passwordRequest
 
 				passwordID, ok := <-passwordRequest.resp
 
 				// closed channel
 				if !ok {
-					fmt.Printf("[worker %d] channel closed\n", i)
+					fmt.Printf("[worker %d] channel closed\n", workerThreadID)
 					return
 				}
 
-				password := shared.EncodeBase(uint64(passwordID), shared.SearchSpace)
+				password := shared.EncodeBase(passwordID, shared.SearchSpace)
 				if digest.Match(password) {
-					fmt.Printf("[worker %d] found password: %s\n", i, password)
-					done <- passwordResponse{password: password}
+					fmt.Printf("[worker %d] found password: %s\n", workerThreadID, password)
+					done <- passwordResponse{password: password, passwordIndex: passwordID}
 					return
+				} else {
+					done <- passwordResponse{password: "", passwordIndex: passwordID}
 				}
 			}
 		})
