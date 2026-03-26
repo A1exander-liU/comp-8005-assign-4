@@ -10,8 +10,10 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
@@ -302,6 +304,17 @@ func (w *Worker) cleanup() {
 
 func (w *Worker) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
+
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		for range shutdown {
+			_ = SaveState(StateFileLocation, w.state)
+			cancel()
+			return
+		}
+	}()
+
 	router := shared.NewRouter(w.Logger, w.conn)
 
 	router.Handle(shared.MessageRegister, w.routeRegister)
@@ -316,7 +329,7 @@ func (w *Worker) Start() {
 	// load existing state if any and reconnect
 	// if loading state or reconnection fails, registration is done instead
 
-	state, err := LoadState("./data/data.json")
+	state, err := LoadState(StateFileLocation)
 	w.state = state
 
 	if err != nil {
