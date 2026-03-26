@@ -63,32 +63,40 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 		var password string
 		checkpoint := 0
 
+		passwordIndex := payload.ChunkStart
+
 	loop:
-		for passwordIndex := payload.ChunkStart; passwordIndex < payload.ChunkEnd; passwordIndex++ {
-			// skip already completed passwords
-			if _, ok := w.state.CompeletedPasswords[int(passwordIndex)]; ok {
-				continue
-			}
-
-			n := len(w.state.CompeletedPasswords)
-			if n > 0 && n%payload.CheckpointAttempts == 0 {
-				checkpoint += 1
-				fmt.Printf("[leader] checkpoint %d\n", checkpoint)
-			}
-
+		for {
 			select {
 			case passwordRequest := <-passwordRequests:
-				passwordRequest.resp <- passwordIndex
-			case result := <-done:
-				w.state.CompeletedPasswords[int(result.passwordIndex)] = true
-
-				if result.password == "" {
-					continue
+				// find next uncompleted password
+				for {
+					if _, ok := w.state.CompeletedPasswords[passwordIndex]; ok {
+						passwordIndex += 1
+					} else {
+						break
+					}
 				}
 
-				password = result.password
-				fmt.Printf("[leader] password found: %s\n", result.password)
-				break loop
+				// check for chunk end
+				if passwordIndex == payload.ChunkEnd {
+					break loop
+				}
+
+				passwordRequest.resp <- passwordIndex
+			case result := <-done:
+				w.state.CompeletedPasswords[result.passwordIndex] = true
+
+				if len(w.state.CompeletedPasswords)%payload.CheckpointAttempts == 0 {
+					fmt.Printf("[leader] checkpoint %d\n", checkpoint)
+					checkpoint += 1
+				}
+
+				if result.password != "" {
+					password = result.password
+					fmt.Printf("[leader] password found: %s\n", result.password)
+					break loop
+				}
 			}
 		}
 
