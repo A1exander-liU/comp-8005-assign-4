@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -276,7 +277,7 @@ func (c *Controller) sendStop() {
 // HandleConnection manages communication with a single worker for the
 // whole entire lifecycle.
 func (c *Controller) HandleConnection(conn net.Conn) {
-	id, _ := shared.UUID()
+	id := uuid.NewString()
 
 	r := shared.NewRouterWithID(c.Logger, conn, id)
 	r.Handle(shared.MessageRegister, c.handleRegistration)
