@@ -15,7 +15,7 @@ func (w *Worker) routeRegister(m shared.Message, _ string) (shared.Message, erro
 	w.state = InitialStateWithID(payload.ID)
 	w.lastAttemptsSent = 0
 
-	_ = SaveState("./data/data.json", w.state)
+	_ = SaveState(StateFileLocation, w.state)
 
 	w.Logger.Info("Created initial state")
 
