@@ -1,5 +1,25 @@
 package controller
 
+// getJob returns a job id that is available to be worked on.
+//
+// It will priortise existing jobs that are currently unassigned
+// before attempting to create a new job.
+func (c *Controller) getJob() int {
+	for jobID, chunk := range c.chunks {
+		if chunk.status == ChunkUnassigned {
+			return jobID
+		}
+	}
+
+	var nextJobID int
+	c.nextChunkIDMutex.Lock()
+	nextJobID = c.nextChunkID
+	c.nextChunkID += 1
+	c.nextChunkIDMutex.Unlock()
+
+	return nextJobID
+}
+
 // assignJob updates the worker information to point to the chunk.
 //
 // A new chunk will be created if not already available.
@@ -28,4 +48,12 @@ func (c *Controller) revokeJob(workerID string, chunkID int) {
 	if chunk, ok := c.chunks[chunkID]; ok {
 		chunk.status = ChunkUnassigned
 	}
+}
+
+// reallocateJob assigns to job of oldWorkerID to newWorkerID.
+//
+// This will also delete the old worker well.
+func (c *Controller) reallocateJob(oldWorkerID, newWorkerID string) {
+	c.workers[newWorkerID] = c.workers[oldWorkerID]
+	delete(c.workers, oldWorkerID)
 }
