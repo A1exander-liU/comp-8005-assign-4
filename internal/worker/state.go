@@ -1,6 +1,10 @@
 package worker
 
-import "github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
+import (
+	"maps"
+
+	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
+)
 
 const StateFileLocation string = "data/state.json"
 
@@ -38,6 +42,16 @@ func (w *Worker) getAttempt(passwordIndex uint64) (bool, bool) {
 	defer w.mu.Unlock()
 	result, ok := w.state.CompeletedPasswords[passwordIndex]
 	return result, ok
+}
+
+func (w *Worker) getAttemptsCopy() map[uint64]bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	completedPasswordsCopy := map[uint64]bool{}
+	maps.Copy(completedPasswordsCopy, w.state.CompeletedPasswords)
+
+	return completedPasswordsCopy
 }
 
 func LoadState(path string) (WorkerState, error) {

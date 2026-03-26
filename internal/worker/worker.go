@@ -30,13 +30,6 @@ type Config struct {
 	Threads int
 }
 
-// Threads to communicate individual cracking results
-type doneResp struct {
-	found    bool
-	password string
-	err      error
-}
-
 // Worker is reponsible for receiving password cracking jobs from
 // the controller and sending the results back.
 type Worker struct {

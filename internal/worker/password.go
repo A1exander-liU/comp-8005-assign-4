@@ -90,6 +90,18 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 				if w.getTotalAttempts()%payload.CheckpointAttempts == 0 {
 					fmt.Printf("[leader] checkpoint %d\n", checkpoint)
 					checkpoint += 1
+					w.router.Send(
+						shared.Message{
+							Version:   shared.MessageVersion,
+							Type:      shared.MessageJobCheckpoint,
+							Timestamp: time.Now(),
+							Message:   "Send checkpoint",
+							Payload: shared.PayloadCheckpoint{
+								ChunkID:            payload.ChunkID,
+								CompletedPasswords: w.getAttemptsCopy(),
+							},
+						},
+					)
 				}
 
 				if result.password != "" {
@@ -144,8 +156,33 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 	passwordCrackDuration := time.Since(passwordCrackStart)
 
 	if foundPassword == "" {
+		// w.router.Send(shared.Mesage{
+		// 	Version:   shared.MessageVersion,
+		// 	Type:      shared.MessageJobResults,
+		// 	Timestamp: time.Now(),
+		// 	Message:   "Job results sent",
+		// 	Payload: shared.PayloadJobResults{
+		// 		Password:     foundPassword,
+		// 		CrackTime:    passwordCrackDuration,
+		// 		DispatchTime: 0 * time.Second,
+		// 		Err:          "password not found in chunk",
+		// 		ChunkID:      payload.ChunkID,
+		// 	},
+		// })
 		fmt.Printf("done in %v: password not found\n", passwordCrackDuration)
 	} else {
+		// w.router.Send(shared.Message{
+		// 	Version:   shared.MessageVersion,
+		// 	Type:      shared.MessageJobResults,
+		// 	Timestamp: time.Now(),
+		// 	Message:   "Job results sent",
+		// 	Payload: shared.PayloadJobResults{
+		// 		Password:     foundPassword,
+		// 		CrackTime:    passwordCrackDuration,
+		// 		DispatchTime: 0 * time.Second,
+		// 		ChunkID:      payload.ChunkID,
+		// 	},
+		// })
 		fmt.Printf("done in %v: %s\n", passwordCrackDuration, foundPassword)
 	}
 }
