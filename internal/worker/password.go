@@ -41,7 +41,7 @@ type passwordResponse struct {
 // HandleJobV1 performs password cracking utilizing a shared password index. Each thread will
 // request an index to the next thread. This ensures passwords are attempted sequentially, simplifying
 // storage of checkpoint progress.
-func (w *Worker) HandleJobV1(payload shared.PayloadJobDetails, dispatchTime time.Duration) {
+func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 	fmt.Println("Cracking started...")
 	fullHash := w.buildHash(payload)
 
@@ -140,9 +140,4 @@ func (w *Worker) HandleJobV1(payload shared.PayloadJobDetails, dispatchTime time
 	} else {
 		fmt.Printf("done in %v: %s\n", passwordCrackDuration, foundPassword)
 	}
-}
-
-// HandleJobV2 performs password cracking by creating static partitions of the passowrds
-// and giving each to a thread.
-func (w *Worker) HandleJobV2(payload shared.PayloadJobDetails, dispatchTime time.Duration) {
 }

@@ -13,7 +13,7 @@ func (w *Worker) routeReconnect(m shared.Message, s string) (shared.Message, err
 
 	w.Logger.Info("Reconnection successful")
 
-	// resume cracking job here
+	go w.handleJobV1(w.state.Payload)
 
 	return shared.Message{}, nil
 }
