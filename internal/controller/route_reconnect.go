@@ -12,7 +12,7 @@ func (c *Controller) handleReconnect(m shared.Message, id string) (shared.Messag
 	_, ok := c.workers[payload.ID]
 
 	if !ok {
-		err := fmt.Sprintf("worker %s was not already connected", id)
+		err := fmt.Sprintf("worker %s was not already connected", payload.ID)
 		return shared.Message{
 				Version:   shared.MessageVersion,
 				Type:      shared.MessageReconnect,
