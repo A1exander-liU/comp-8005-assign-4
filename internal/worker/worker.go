@@ -96,8 +96,10 @@ func (w *Worker) Start() {
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		for range shutdown {
+			w.mu.Lock()
 			_ = SaveState(StateFileLocation, w.state)
-			cancel()
+			w.mu.Unlock()
+			w.cleanup()
 			return
 		}
 	}()

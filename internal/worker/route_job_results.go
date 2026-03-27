@@ -8,13 +8,13 @@ import (
 func (w *Worker) routeJobResults(m shared.Message, s string) (shared.Message, error) {
 	if m.Err != "" {
 		w.Logger.Warn("Job results rejected", zap.String("error", m.Err))
-	}
+	} else {
+		payload := m.Payload.(shared.PayloadJobResultsResp)
 
-	payload := m.Payload.(shared.PayloadJobResultsResp)
-
-	// password was found, exit
-	if payload.Done {
-		return shared.Message{Type: shared.MessageClose}, nil
+		// password was found, exit
+		if payload.Done {
+			return shared.Message{Type: shared.MessageClose}, nil
+		}
 	}
 
 	return shared.Message{Type: shared.MessageJobDetails}, nil
