@@ -1,9 +1,11 @@
 package worker
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
@@ -29,15 +31,6 @@ func (w *Worker) buildHash(payload shared.PayloadJobDetails) string {
 	return fullHash
 }
 
-type passwordRequest struct {
-	resp chan uint64
-}
-
-type passwordResponse struct {
-	password      string
-	passwordIndex uint64
-}
-
 // HandleJobV1 performs password cracking utilizing a shared password index. Each thread will
 // request an index to the next thread. This ensures passwords are attempted sequentially, simplifying
 // storage of checkpoint progress.
@@ -45,144 +38,136 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 	fmt.Println("Cracking started...")
 	fullHash := w.buildHash(payload)
 
-	// make sure password hash is correct format
 	decoder, _ := crypt.NewDecoderAll()
 	digest, err := decoder.Decode(fullHash)
 	if err != nil {
 		return
 	}
 
-	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	passwordRequests := make(chan passwordRequest, w.Config.Threads)
-	done := make(chan passwordResponse, 1)
-	result := make(chan string)
+	var (
+		index       atomic.Uint64 // next password index to try
+		found       atomic.Bool   // true once a match is seen
+		foundPasswd atomic.Value  // stores the string once found
+		wg          sync.WaitGroup
 
-	// coordinator thread
-	go func() {
-		var password string
-		checkpoint := 0
+		checkpoint    int
+		checkpointMu  sync.Mutex
+		localAttempts atomic.Int64
+	)
 
-		passwordIndex := payload.ChunkStart
-
-	loop:
-		for {
-			select {
-			case passwordRequest := <-passwordRequests:
-				// find next uncompleted password
-				for {
-					if _, ok := w.getAttempt(passwordIndex); ok {
-						passwordIndex += 1
-					} else {
-						break
-					}
-				}
-
-				// check for chunk end
-				if passwordIndex == payload.ChunkEnd {
-					break loop
-				}
-
-				passwordRequest.resp <- passwordIndex
-			case result := <-done:
-				w.addAttempt(result.passwordIndex)
-
-				if w.getTotalAttempts()%payload.CheckpointAttempts == 0 {
-					fmt.Printf("[leader] checkpoint %d\n", checkpoint)
-					checkpoint += 1
-					w.router.Send(
-						shared.Message{
-							Version:   shared.MessageVersion,
-							Type:      shared.MessageJobCheckpoint,
-							Timestamp: time.Now(),
-							Message:   "Send checkpoint",
-							Payload: shared.PayloadCheckpoint{
-								ChunkID:            payload.ChunkID,
-								CompletedPasswords: w.getAttemptsCopy(),
-							},
-						},
-					)
-				}
-
-				if result.password != "" {
-					password = result.password
-					fmt.Printf("[leader] password found: %s\n", result.password)
-					break loop
-				}
-			}
-		}
-
-		// drain requests and close the channels
-		for request := range passwordRequests {
-			close(request.resp)
-		}
-		result <- password
-	}()
+	index.Store(payload.ChunkStart)
 
 	passwordCrackStart := time.Now()
 
-	// worker threads
 	for i := range w.Config.Threads {
-		workerThreadID := i + 1
-		wg.Go(func() {
+		wg.Add(1)
+		workerID := i + 1
+
+		go func() {
+			defer wg.Done()
+
 			for {
-				passwordRequest := passwordRequest{resp: make(chan uint64)}
-				passwordRequests <- passwordRequest
+				// Check cancellation first
+				select {
+				case <-ctx.Done():
+					fmt.Printf("[worker %d] cancelled\n", workerID)
+					return
+				default:
+				}
 
-				passwordID, ok := <-passwordRequest.resp
+				// Atomically claim the next index
+				idx := index.Add(1) - 1
 
-				// closed channel
-				if !ok {
-					fmt.Printf("[worker %d] channel closed\n", workerThreadID)
+				// Skip already-attempted indices
+				for {
+					if _, attempted := w.getAttempt(idx); !attempted {
+						break
+					}
+					idx = index.Add(1) - 1
+				}
+
+				if idx >= payload.ChunkEnd {
+					fmt.Printf("[worker %d] no more passwords\n", workerID)
 					return
 				}
 
-				password := shared.EncodeBase(passwordID, shared.SearchSpace)
+				password := shared.EncodeBase(idx, shared.SearchSpace)
+
 				if digest.Match(password) {
-					fmt.Printf("[worker %d] found password: %s\n", workerThreadID, password)
-					done <- passwordResponse{password: password, passwordIndex: passwordID}
+					fmt.Printf("[worker %d] found password: %s\n", workerID, password)
+					foundPasswd.Store(password)
+					found.Store(true)
+					cancel() // signal all other workers
 					return
-				} else {
-					done <- passwordResponse{password: "", passwordIndex: passwordID}
+				}
+
+				w.addAttempt(idx)
+
+				// Checkpoint handling
+				n := localAttempts.Add(1)
+				if n%int64(payload.CheckpointAttempts) == 0 {
+					checkpointMu.Lock()
+					checkpoint++
+					cp := checkpoint
+					checkpointMu.Unlock()
+
+					fmt.Printf("[checkpoint %d]\n", cp)
+					w.router.Send(shared.Message{
+						Version:   shared.MessageVersion,
+						Type:      shared.MessageJobCheckpoint,
+						Timestamp: time.Now(),
+						Message:   "Send checkpoint",
+						Payload: shared.PayloadCheckpoint{
+							ChunkID:            payload.ChunkID,
+							CompletedPasswords: w.getAttemptsCopy(),
+						},
+					})
 				}
 			}
-		})
+		}()
 	}
 
 	wg.Wait()
-	close(passwordRequests)
-	foundPassword := <-result
 
 	passwordCrackDuration := time.Since(passwordCrackStart)
 
+	var foundPassword string
+	if v := foundPasswd.Load(); v != nil {
+		foundPassword = v.(string)
+	}
+
+	fmt.Printf("Done in %s — password: %q\n", passwordCrackDuration, foundPassword)
 	if foundPassword == "" {
-		// w.router.Send(shared.Mesage{
-		// 	Version:   shared.MessageVersion,
-		// 	Type:      shared.MessageJobResults,
-		// 	Timestamp: time.Now(),
-		// 	Message:   "Job results sent",
-		// 	Payload: shared.PayloadJobResults{
-		// 		Password:     foundPassword,
-		// 		CrackTime:    passwordCrackDuration,
-		// 		DispatchTime: 0 * time.Second,
-		// 		Err:          "password not found in chunk",
-		// 		ChunkID:      payload.ChunkID,
-		// 	},
-		// })
-		fmt.Printf("done in %v: password not found\n", passwordCrackDuration)
+		w.router.Send(
+			shared.Message{
+				Version:   shared.MessageVersion,
+				Type:      shared.MessageJobResults,
+				Timestamp: time.Now(),
+				Message:   "Job results sent",
+				Payload: shared.PayloadJobResults{
+					Password:  foundPassword,
+					CrackTime: passwordCrackDuration, DispatchTime: 0 * time.Second,
+					Err:     "password not found in chunk",
+					ChunkID: payload.ChunkID,
+				},
+			},
+		)
 	} else {
-		// w.router.Send(shared.Message{
-		// 	Version:   shared.MessageVersion,
-		// 	Type:      shared.MessageJobResults,
-		// 	Timestamp: time.Now(),
-		// 	Message:   "Job results sent",
-		// 	Payload: shared.PayloadJobResults{
-		// 		Password:     foundPassword,
-		// 		CrackTime:    passwordCrackDuration,
-		// 		DispatchTime: 0 * time.Second,
-		// 		ChunkID:      payload.ChunkID,
-		// 	},
-		// })
-		fmt.Printf("done in %v: %s\n", passwordCrackDuration, foundPassword)
+		w.router.Send(
+			shared.Message{
+				Version:   shared.MessageVersion,
+				Type:      shared.MessageJobResults,
+				Timestamp: time.Now(),
+				Message:   "Job results sent",
+				Payload: shared.PayloadJobResults{
+					Password:  foundPassword,
+					CrackTime: passwordCrackDuration, DispatchTime: 0 * time.Second,
+					ChunkID: payload.ChunkID,
+				},
+			},
+		)
 	}
 }
