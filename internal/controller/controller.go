@@ -138,7 +138,6 @@ func NewController(logger *zap.Logger) *Controller {
 
 // handleWorkerCrashes is called everytime a worker exits. Checks
 func (c *Controller) handleWorkerCrashes() {
-	fmt.Println("checking crashed workers")
 	for id, worker := range c.workers {
 		if worker.Connected {
 			continue
@@ -149,19 +148,19 @@ func (c *Controller) handleWorkerCrashes() {
 		}
 
 		// only attempt to revoke jobs from workers that exited with an assigned job
-		c.Logger.Info("worker disconnected with work", zap.String("workerID", id), zap.Int("chunkID", worker.ChunkID))
+		c.Logger.Info("Worker disconnected with work", zap.String("workerID", id), zap.Int("chunkID", worker.ChunkID))
 		go func() {
 			timer := time.NewTimer(time.Duration(c.Config.HeartbeatSeconds) * time.Second)
 
 			for {
 				select {
 				case <-timer.C:
-					c.Logger.Info("worker did not reconnect in time", zap.String("workerID", id))
+					c.Logger.Info("Worker did not reconnect in time", zap.String("workerID", id))
 					c.revokeJob(id, worker.ChunkID)
 					return
 				case <-worker.reconnectionC:
 					timer.Stop()
-					c.Logger.Info("worker reconnected in time", zap.String("workerID", id))
+					c.Logger.Info("Worker reconnected in time", zap.String("workerID", id))
 					return
 				}
 			}
