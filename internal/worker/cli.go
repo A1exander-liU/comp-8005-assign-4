@@ -16,6 +16,7 @@ func (w *Worker) ParseArguments() Config {
 	fs.StringVar(&config.ControllerIP, "c", "", "controller ip")
 	fs.IntVar(&config.ControllerPort, "p", 0, "controller port number")
 	fs.IntVar(&config.Threads, "t", 1, "thread count for password cracking")
+	fs.StringVar(&config.CheckpointFile, "f", "./data/state.json", "path to checkpoint file")
 
 	w.fs = fs
 

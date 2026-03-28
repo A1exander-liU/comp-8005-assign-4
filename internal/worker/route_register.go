@@ -15,7 +15,7 @@ func (w *Worker) routeRegister(m shared.Message, _ string) (shared.Message, erro
 	w.state = InitialStateWithID(payload.ID)
 	w.lastAttemptsSent = 0
 
-	_ = SaveState(StateFileLocation, w.state)
+	_ = SaveState(w.Config.CheckpointFile, w.state)
 
 	w.Logger.Info("Created initial state")
 

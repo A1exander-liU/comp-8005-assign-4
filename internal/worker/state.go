@@ -4,8 +4,6 @@ import (
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 )
 
-const StateFileLocation string = "data/state.json"
-
 type WorkerState struct {
 	ID            string `json:"id"`
 	ChunkID       int    `json:"chunk_id"`

@@ -28,6 +28,8 @@ type Config struct {
 
 	// Number of threads to use for password cracking
 	Threads int
+
+	CheckpointFile string
 }
 
 // Worker is reponsible for receiving password cracking jobs from
@@ -97,7 +99,7 @@ func (w *Worker) Start() {
 	go func() {
 		for range shutdown {
 			w.mu.Lock()
-			_ = SaveState(StateFileLocation, w.state)
+			_ = SaveState(w.Config.CheckpointFile, w.state)
 			w.mu.Unlock()
 			w.cleanup()
 			return
@@ -118,7 +120,7 @@ func (w *Worker) Start() {
 	// load existing state if any and reconnect
 	// if loading state or reconnection fails, registration is done instead
 
-	state, err := LoadState(StateFileLocation)
+	state, err := LoadState(w.Config.CheckpointFile)
 
 	if err != nil {
 		w.Logger.Warn("Failed to load state", zap.Error(err))
