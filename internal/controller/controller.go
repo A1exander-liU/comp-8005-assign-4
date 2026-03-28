@@ -185,6 +185,7 @@ func (c *Controller) getUnassignedChunk(workerID string) (int, bool) {
 		}
 
 		c.assignJob(workerID, chunkID)
+		c.nextChunkIDMutex.Unlock()
 		return chunkID, true
 	}
 	c.nextChunkIDMutex.Unlock()
