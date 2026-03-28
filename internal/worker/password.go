@@ -10,6 +10,7 @@ import (
 
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 	"github.com/go-crypt/crypt"
+	"go.uber.org/zap"
 )
 
 func (w *Worker) buildHash(payload shared.PayloadJobDetails) string {
@@ -53,13 +54,10 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 		foundPasswd atomic.Value  // stores the string once found
 		wg          sync.WaitGroup
 
-		checkpoint    int
-		checkpointMu  sync.Mutex
 		localAttempts atomic.Int64
 	)
 
-	index.Store(payload.ChunkStart)
-
+	index.Store(uint64(w.state.PasswordIndex))
 	passwordCrackStart := time.Now()
 
 	for i := range w.Config.Threads {
@@ -78,16 +76,11 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 				default:
 				}
 
-				// Atomically claim the next index
+				// Atomically claim the next password while incrementing for other threads
 				idx := index.Add(1) - 1
-
-				// Skip already-attempted indices
-				for {
-					if _, attempted := w.getAttempt(idx); !attempted {
-						break
-					}
-					idx = index.Add(1) - 1
-				}
+				w.mu.Lock()
+				w.state.PasswordIndex = int(idx + 1)
+				w.mu.Unlock()
 
 				if idx >= payload.ChunkEnd {
 					fmt.Printf("[worker %d] no more passwords\n", workerID)
@@ -95,7 +88,6 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 				}
 
 				password := shared.EncodeBase(idx, shared.SearchSpace)
-
 				if digest.Match(password) {
 					fmt.Printf("[worker %d] found password: %s\n", workerID, password)
 					foundPasswd.Store(password)
@@ -104,17 +96,8 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 					return
 				}
 
-				w.addAttempt(idx)
-
-				// Checkpoint handling
 				n := localAttempts.Add(1)
 				if n%int64(payload.CheckpointAttempts) == 0 {
-					checkpointMu.Lock()
-					checkpoint++
-					cp := checkpoint
-					checkpointMu.Unlock()
-
-					fmt.Printf("[checkpoint %d]\n", cp)
 					w.router.Send(shared.Message{
 						Version:   shared.MessageVersion,
 						Type:      shared.MessageJobCheckpoint,
@@ -122,7 +105,7 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 						Message:   "Send checkpoint",
 						Payload: shared.PayloadCheckpoint{
 							ChunkID:            payload.ChunkID,
-							CompletedPasswords: w.getAttemptsCopy(),
+							CompletedPasswords: idx - payload.ChunkStart,
 						},
 					})
 				}
@@ -140,6 +123,7 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 	}
 
 	fmt.Printf("Done in %s — password: %q\n", passwordCrackDuration, foundPassword)
+	w.Logger.Info("Job results submitted", zap.Int("chunkID", payload.ChunkID))
 	if foundPassword == "" {
 		w.router.Send(
 			shared.Message{

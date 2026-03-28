@@ -1,8 +1,6 @@
 package worker
 
 import (
-	"fmt"
-
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 	"go.uber.org/zap"
 )
@@ -17,7 +15,6 @@ func (w *Worker) routeReconnect(m shared.Message, s string) (shared.Message, err
 
 	w.Logger.Info("Reconnection successful")
 
-	fmt.Println("completed passwords", len(w.state.CompeletedPasswords))
 	go w.handleJobV1(w.state.Payload)
 
 	return shared.Message{}, nil

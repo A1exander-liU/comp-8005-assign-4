@@ -107,16 +107,8 @@ type PayloadHearbeat struct {
 }
 
 type PayloadCheckpoint struct {
-	ChunkID int
-
-	// Progress made since last checkpoint
-	// Progress is an array of length two arrays
-	// Each array is for each thread which shows start and end indices of attempted passwords
-	// [ [ start, end ], ... ]
-	CurrentProgress [][]int
-
-	// Number of attempted passwords
-	CurrentTested int
+	ChunkID            int
+	CompletedPasswords uint64
 }
 
 type PayloadReconnect struct {
