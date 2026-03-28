@@ -54,6 +54,9 @@ type workerConnection struct {
 	// Only registered can be sent jobs
 	Registered bool
 
+	Connected     bool
+	reconnectionC chan bool
+
 	// Current chunk its working on, -1 indicates not working
 	ChunkID int
 
@@ -64,8 +67,6 @@ type workerConnection struct {
 	cancel context.CancelFunc
 
 	HeartbeatsSinceReply int
-
-	reconnectionChan chan bool
 
 	// Shared channel for router hook
 	incomingMessages chan shared.Message
@@ -132,6 +133,39 @@ func NewController(logger *zap.Logger) *Controller {
 		chunkTimings: map[int]*chunkTiming{},
 		deltaTimings: make([]int, 0),
 		crackStart:   nil,
+	}
+}
+
+// handleWorkerCrashes is called everytime a worker exits. Checks
+func (c *Controller) handleWorkerCrashes() {
+	fmt.Println("checking crashed workers")
+	for id, worker := range c.workers {
+		if worker.Connected {
+			continue
+		}
+
+		if worker.ChunkID == -1 {
+			continue
+		}
+
+		// only attempt to revoke jobs from workers that exited with an assigned job
+		c.Logger.Info("worker disconnected with work", zap.String("workerID", id), zap.Int("chunkID", worker.ChunkID))
+		go func() {
+			timer := time.NewTimer(time.Duration(c.Config.HeartbeatSeconds) * time.Second)
+
+			for {
+				select {
+				case <-timer.C:
+					c.Logger.Info("worker did not reconnect in time", zap.String("workerID", id))
+					c.revokeJob(id, worker.ChunkID)
+					return
+				case <-worker.reconnectionC:
+					timer.Stop()
+					c.Logger.Info("worker reconnected in time", zap.String("workerID", id))
+					return
+				}
+			}
+		}()
 	}
 }
 
@@ -205,6 +239,8 @@ func (c *Controller) processHeartbeat(workerID string) {
 	for {
 		select {
 		case <-worker.ctx.Done():
+			worker.Connected = false
+			go c.handleWorkerCrashes()
 			ticker.Stop()
 			return
 
@@ -236,7 +272,7 @@ func (c *Controller) processHeartbeat(workerID string) {
 
 			// failed to respond to heartbeat in time, revoke the job
 			if worker.HeartbeatsSinceReply > 1 {
-				message := fmt.Sprintf("worker %s failed to respond to heartbeart", workerID)
+				message := fmt.Sprintf("worker %s failed to respond for too many heartbeart", workerID)
 
 				c.Logger.Warn(message)
 				c.revokeJob(workerID, worker.ChunkID)
@@ -253,14 +289,7 @@ func (c *Controller) processHeartbeat(workerID string) {
 // This will additionally unregister all existing worker connections
 // from the controller.
 func (c *Controller) sendStop() {
-	for _, worker := range c.workers {
-		id := worker.Conn.RemoteAddr().String()
-
-		_, ok := c.workers[id]
-		if ok {
-			delete(c.workers, id)
-		}
-
+	for id, worker := range c.workers {
 		worker.Router.Send(shared.Message{
 			Version:   shared.MessageVersion,
 			ID:        id,
@@ -294,10 +323,11 @@ func (c *Controller) HandleConnection(conn net.Conn) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	c.workers[id] = &workerConnection{
-		Registered: false,
-		Conn:       conn, Router: r,
+		Registered:    false,
+		Connected:     true,
+		reconnectionC: make(chan bool, 1),
+		Conn:          conn, Router: r,
 		ctx: ctx, cancel: cancel,
-		reconnectionChan: make(chan bool),
 		incomingMessages: incomingMessages,
 	}
 
