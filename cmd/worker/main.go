@@ -12,6 +12,7 @@ func main() {
 
 	cfg := zap.NewDevelopmentConfig()
 	cfg.DisableCaller = true
+	cfg.DisableStacktrace = true
 	cfg.Level.SetLevel(zapcore.InfoLevel)
 
 	logger := zap.Must(cfg.Build())
