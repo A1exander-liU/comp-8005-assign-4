@@ -4,12 +4,12 @@ go 1.25.1
 
 require (
 	github.com/go-crypt/crypt v0.4.7
+	github.com/google/uuid v1.6.0
 	go.uber.org/zap v1.27.1
 )
 
 require (
 	github.com/go-crypt/x v0.4.9 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 )
