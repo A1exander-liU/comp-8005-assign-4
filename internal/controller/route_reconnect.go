@@ -23,8 +23,11 @@ func (c *Controller) handleReconnect(m shared.Message, id string) (shared.Messag
 			nil
 	}
 
+	chunkID := c.workers[payload.ID].ChunkID
+
 	c.workers[payload.ID] = c.workers[id]
 	c.workers[payload.ID].Registered = true
+	c.workers[payload.ID].ChunkID = chunkID
 	c.workers[payload.ID].Router.ID = payload.ID
 	delete(c.workers, id)
 
