@@ -104,8 +104,8 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 						Timestamp: time.Now(),
 						Message:   "Send checkpoint",
 						Payload: shared.PayloadCheckpoint{
-							ChunkID:            payload.ChunkID,
-							CompletedPasswords: idx - payload.ChunkStart,
+							ChunkID:    payload.ChunkID,
+							ChunkIndex: idx,
 						},
 					})
 				}

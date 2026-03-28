@@ -12,8 +12,9 @@ func (w *Worker) routeJobDetails(m shared.Message, id string) (shared.Message, e
 	}
 
 	payload := m.Payload.(shared.PayloadJobDetails)
+	w.Logger.Info("Received job", zap.Int("chunkID", payload.ChunkID))
 	w.state.Payload = payload
-	w.state.PasswordIndex = int(payload.ChunkStart)
+	w.state.PasswordIndex = int(payload.ChunkIndex)
 
 	go w.handleJobV1(payload)
 
