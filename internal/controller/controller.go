@@ -65,6 +65,8 @@ type workerConnection struct {
 
 	HeartbeatsSinceReply int
 
+	reconnectionChan chan bool
+
 	// Shared channel for router hook
 	incomingMessages chan shared.Message
 }
@@ -188,6 +190,29 @@ func (c *Controller) AcceptConnection() (net.Conn, error) {
 	return c.listener.Accept()
 }
 
+func (c *Controller) crashHandler(workerID string) {
+	fmt.Println("running")
+	// only need to consider revoking job if worker crashed with a job
+	if c.workers[workerID].ChunkID == -1 {
+		return
+	}
+
+	ch := c.workers[workerID].reconnectionChan
+
+	// need to be able to listen all reconnection events not just for one connection
+	time.NewTimer(time.Second)
+	timer := time.NewTimer(time.Duration(c.Config.HeartbeatSeconds) * time.Second)
+	for {
+		select {
+		case <-timer.C:
+			c.Logger.Warn("Worker disconnected for too long", zap.String("workerID", workerID))
+			return
+		case <-ch:
+			c.Logger.Info("Worker reconnected in time")
+		}
+	}
+}
+
 // processHeartbeat handles sending heartbeats to workers to determine their liveliness.
 //
 // A heartbeat is sent periodically based on the heartbeat seconds if the worker is actively
@@ -204,6 +229,7 @@ func (c *Controller) processHeartbeat(workerID string) {
 		select {
 		case <-worker.ctx.Done():
 			ticker.Stop()
+			go c.crashHandler(workerID)
 			return
 
 		case <-ticker.C:
@@ -295,10 +321,12 @@ func (c *Controller) HandleConnection(conn net.Conn) {
 		Registered: false,
 		Conn:       conn, Router: r,
 		ctx: ctx, cancel: cancel,
+		reconnectionChan: make(chan bool),
 		incomingMessages: incomingMessages,
 	}
 
 	go c.processHeartbeat(id)
+
 	if err := r.Start(ctx, cancel); err != nil {
 		c.Logger.Error(err.Error())
 	}
