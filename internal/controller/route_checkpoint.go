@@ -1,9 +1,6 @@
 package controller
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 	"go.uber.org/zap"
 )
@@ -16,19 +13,10 @@ import (
 func (c *Controller) handleJobCheckpoint(m shared.Message, id string) (shared.Message, error) {
 	payload := m.Payload.(shared.PayloadCheckpoint)
 	if payload.ChunkID != c.workers[id].ChunkID {
-		err := fmt.Sprintf("worker %s is not assigned to chunk %d", id, payload.ChunkID)
-		return shared.Message{
-				Version:   shared.MessageVersion,
-				ID:        id,
-				Type:      shared.MessageJobCheckpoint,
-				Timestamp: time.Now(),
-				Message:   "Job checkpoint rejected",
-				Err:       err,
-			},
-			nil
+		c.Logger.Info("Checkpoint rejected, not assigned to chunk", zap.String("workerID", id), zap.Int("chunkID", payload.ChunkID))
+	} else {
+		c.Logger.Info("Checkpoint accepted", zap.String("worker", id), zap.Int("chunkID", payload.ChunkID))
 	}
-
-	c.Logger.Info("Received checkpoint", zap.String("worker", id), zap.Int("chunkID", payload.ChunkID))
 
 	return shared.Message{}, nil
 }
