@@ -16,6 +16,7 @@ func (c *Controller) handleJobCheckpoint(m shared.Message, id string) (shared.Me
 		c.Logger.Info("Checkpoint rejected, not assigned to chunk", zap.String("workerID", id), zap.Int("chunkID", payload.ChunkID))
 	} else {
 		c.Logger.Info("Checkpoint accepted", zap.String("worker", id), zap.Int("chunkID", payload.ChunkID))
+		c.chunks[payload.ChunkID].index = payload.ChunkIndex
 	}
 
 	return shared.Message{}, nil

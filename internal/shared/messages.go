@@ -76,6 +76,7 @@ type PayloadJobDetails struct {
 	ChunkID    int    `json:"chunk_id"`
 	ChunkStart uint64 `json:"chunk_start"`
 	ChunkEnd   uint64 `json:"chunk_end"`
+	ChunkIndex uint64 `json:"chunk_index"`
 
 	HeartbeatSeconds   int `json:"heartbeat_seconds"`
 	CheckpointAttempts int `json:"checkpoint_attempts"`
@@ -107,8 +108,8 @@ type PayloadHearbeat struct {
 }
 
 type PayloadCheckpoint struct {
-	ChunkID            int
-	CompletedPasswords uint64
+	ChunkID    int
+	ChunkIndex uint64
 }
 
 type PayloadReconnect struct {

@@ -74,7 +74,7 @@ type workerConnection struct {
 
 type chunk struct {
 	// Start and end index of the passwords (end is exclusive)
-	start, end uint64
+	start, end, index uint64
 
 	// Assigned means active worker, so can't be assigned
 	// Unassigned means no active worker, so can be assigned

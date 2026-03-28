@@ -48,6 +48,7 @@ func (c *Controller) sendJob(_ shared.Message, id string) (shared.Message, error
 			ChunkID:            chunkID,
 			ChunkStart:         c.chunks[chunkID].start,
 			ChunkEnd:           c.chunks[chunkID].end,
+			ChunkIndex:         c.chunks[chunkID].index,
 			HeartbeatSeconds:   c.Config.HeartbeatSeconds,
 			CheckpointAttempts: c.Config.CheckpointAttempts,
 		},
