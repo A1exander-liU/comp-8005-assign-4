@@ -17,6 +17,7 @@ func (w *Worker) routeJobDetails(m shared.Message, id string) (shared.Message, e
 	w.Logger.Info("Received job", zap.Int("chunkID", payload.ChunkID))
 	w.state.Payload = payload
 	w.state.PasswordIndex = int(payload.ChunkIndex)
+	w.lastAttemptsSent = 0
 
 	go w.handleJobV1(payload, m.Timestamp, time.Now())
 
