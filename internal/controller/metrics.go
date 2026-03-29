@@ -105,6 +105,7 @@ func (m *Metric) SetJobMetric(chunkID int, jm JobMetric) {
 	}
 }
 
+// AddHeartbeatMetric adds a heartbeat metric for a given payload and heartbeat seconds.
 func (m *Metric) AddHeartbeatMetric(payload shared.PayloadHearbeat, heartbeatSeconds int) {
 	m.heartbeatMetrics = append(m.heartbeatMetrics, HeartbeatMetric{
 		heartbeatSeconds: heartbeatSeconds,
@@ -114,6 +115,7 @@ func (m *Metric) AddHeartbeatMetric(payload shared.PayloadHearbeat, heartbeatSec
 	})
 }
 
+// AddCheckpointTiming adds a checkpoint timing for a given start and end time.
 func (m *Metric) AddCheckpointTiming(start, end time.Time) {
 	m.checkpointTimings = append(m.checkpointTimings, []time.Time{start, end})
 }
@@ -139,6 +141,9 @@ func (m *Metric) HeartbeatMetrics() (float64, float64) {
 	return averageRate, variance
 }
 
+// EndToEndMetrics calculates and returns the end-to-end metrics for the cracking process.
+//
+// This includes the parse time, crack time, assignment overhead, dispatch overhead, return overhead, and checkpoint overhead.
 func (m *Metric) EndToEndMetrics() (
 	time.Duration,
 	time.Duration,
