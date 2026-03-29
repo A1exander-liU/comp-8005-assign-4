@@ -35,7 +35,7 @@ func (w *Worker) buildHash(payload shared.PayloadJobDetails) string {
 // HandleJobV1 performs password cracking utilizing a shared password index. Each thread will
 // request an index to the next thread. This ensures passwords are attempted sequentially, simplifying
 // storage of checkpoint progress.
-func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
+func (w *Worker) handleJobV1(payload shared.PayloadJobDetails, dispatchStart, dispatchEnd time.Time) {
 	fmt.Println("Cracking started...")
 	fullHash := w.buildHash(payload)
 
@@ -124,6 +124,14 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 
 	fmt.Printf("Done in %s — password: %q\n", passwordCrackDuration, foundPassword)
 	w.Logger.Info("Job results submitted", zap.Int("chunkID", payload.ChunkID))
+
+	var dispatchTime time.Duration
+	if dispatchStart.Equal(time.Time{}) {
+		dispatchTime = 0 * time.Second
+	} else {
+		dispatchTime = dispatchEnd.Sub(dispatchStart)
+	}
+
 	if foundPassword == "" {
 		w.router.Send(
 			shared.Message{
@@ -133,7 +141,7 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 				Message:   "Job results sent",
 				Payload: shared.PayloadJobResults{
 					Password:  foundPassword,
-					CrackTime: passwordCrackDuration, DispatchTime: 0 * time.Second,
+					CrackTime: passwordCrackDuration, DispatchTime: dispatchTime,
 					Err:     "password not found in chunk",
 					ChunkID: payload.ChunkID,
 				},
@@ -148,7 +156,7 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails) {
 				Message:   "Job results sent",
 				Payload: shared.PayloadJobResults{
 					Password:  foundPassword,
-					CrackTime: passwordCrackDuration, DispatchTime: 0 * time.Second,
+					CrackTime: passwordCrackDuration, DispatchTime: dispatchTime,
 					ChunkID: payload.ChunkID,
 				},
 			},

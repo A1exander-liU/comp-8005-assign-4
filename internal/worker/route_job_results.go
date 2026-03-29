@@ -1,6 +1,8 @@
 package worker
 
 import (
+	"time"
+
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 	"go.uber.org/zap"
 )
@@ -13,9 +15,9 @@ func (w *Worker) routeJobResults(m shared.Message, s string) (shared.Message, er
 
 		// password was found, exit
 		if payload.Done {
-			return shared.Message{Type: shared.MessageClose}, nil
+			return shared.Message{Type: shared.MessageClose, Timestamp: time.Now()}, nil
 		}
 	}
 
-	return shared.Message{Type: shared.MessageJobDetails}, nil
+	return shared.Message{Type: shared.MessageJobDetails, Timestamp: time.Now()}, nil
 }

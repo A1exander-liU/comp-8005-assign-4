@@ -1,6 +1,8 @@
 package worker
 
 import (
+	"time"
+
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 	"go.uber.org/zap"
 )
@@ -8,7 +10,7 @@ import (
 func (w *Worker) routeJobDetails(m shared.Message, id string) (shared.Message, error) {
 	if m.Err != "" {
 		w.Logger.Warn("Failed to receive job", zap.String("error", m.Err))
-		return shared.Message{Type: shared.MessageClose}, nil
+		return shared.Message{Type: shared.MessageClose, Timestamp: time.Now()}, nil
 	}
 
 	payload := m.Payload.(shared.PayloadJobDetails)
@@ -16,7 +18,7 @@ func (w *Worker) routeJobDetails(m shared.Message, id string) (shared.Message, e
 	w.state.Payload = payload
 	w.state.PasswordIndex = int(payload.ChunkIndex)
 
-	go w.handleJobV1(payload)
+	go w.handleJobV1(payload, m.Timestamp, time.Now())
 
 	return shared.Message{}, nil
 }
