@@ -36,7 +36,7 @@ func (w *Worker) buildHash(payload shared.PayloadJobDetails) string {
 // request an index to the next thread. This ensures passwords are attempted sequentially, simplifying
 // storage of checkpoint progress.
 func (w *Worker) handleJobV1(payload shared.PayloadJobDetails, dispatchStart, dispatchEnd time.Time) {
-	fmt.Println("Cracking started...")
+	w.Logger.Info("Cracking started...")
 	fullHash := w.buildHash(payload)
 
 	decoder, _ := crypt.NewDecoderAll()
@@ -71,7 +71,7 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails, dispatchStart, di
 				// Check cancellation first
 				select {
 				case <-ctx.Done():
-					fmt.Printf("[worker %d] cancelled\n", workerID)
+					// fmt.Printf("[worker %d] cancelled\n", workerID)
 					return
 				default:
 				}
@@ -83,13 +83,13 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails, dispatchStart, di
 				w.mu.Unlock()
 
 				if idx >= payload.ChunkEnd {
-					fmt.Printf("[worker %d] no more passwords\n", workerID)
+					// fmt.Printf("[worker %d] no more passwords\n", workerID)
 					return
 				}
 
 				password := shared.EncodeBase(idx, shared.SearchSpace)
 				if digest.Match(password) {
-					fmt.Printf("[worker %d] found password: %s\n", workerID, password)
+					w.Logger.Info(fmt.Sprintf("[worker %d] found password: %s\n", workerID, password))
 					foundPasswd.Store(password)
 					found.Store(true)
 					cancel() // signal all other workers
@@ -122,7 +122,7 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails, dispatchStart, di
 		foundPassword = v.(string)
 	}
 
-	fmt.Printf("Done in %s — password: %q\n", passwordCrackDuration, foundPassword)
+	w.Logger.Info(fmt.Sprintf("Done in %s — password: %q\n", passwordCrackDuration, foundPassword))
 	w.Logger.Info("Job results submitted", zap.Int("chunkID", payload.ChunkID))
 
 	var dispatchTime time.Duration
