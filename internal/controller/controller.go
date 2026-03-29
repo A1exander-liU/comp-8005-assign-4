@@ -56,6 +56,7 @@ type workerConnection struct {
 
 	Connected     bool
 	reconnectionC chan bool
+	newJobC       chan bool
 
 	// Current chunk its working on, -1 indicates not working
 	ChunkID int
@@ -242,6 +243,9 @@ func (c *Controller) processHeartbeat(workerID string) {
 
 	for {
 		select {
+		case <-worker.newJobC:
+			ticker.Reset(time.Duration(c.Config.HeartbeatSeconds) * time.Second)
+
 		case <-worker.ctx.Done():
 			worker.Connected = false
 			go c.handleWorkerCrashes()
@@ -331,6 +335,7 @@ func (c *Controller) HandleConnection(conn net.Conn) {
 		Registered:    false,
 		Connected:     true,
 		reconnectionC: make(chan bool, 1),
+		newJobC:       make(chan bool, 1),
 		Conn:          conn, Router: r,
 		ctx: ctx, cancel: cancel,
 		incomingMessages: incomingMessages,

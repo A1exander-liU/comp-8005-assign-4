@@ -63,6 +63,8 @@ func (c *Controller) sendJob(_ shared.Message, id string) (shared.Message, error
 		},
 	}
 
+	c.workers[id].newJobC <- true
+
 	c.LatencyDispatch = timestamp.Sub(c.LatencyDispatchTime)
 
 	return res, nil
