@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"time"
+
 	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
 	"go.uber.org/zap"
 )
@@ -18,6 +20,8 @@ func (c *Controller) handleJobCheckpoint(m shared.Message, id string) (shared.Me
 		c.Logger.Info("Checkpoint accepted", zap.String("worker", id), zap.Int("chunkID", payload.ChunkID))
 		c.chunks[payload.ChunkID].index = payload.ChunkIndex
 	}
+
+	c.metric.AddCheckpointTiming(m.Timestamp, time.Now())
 
 	return shared.Message{}, nil
 }

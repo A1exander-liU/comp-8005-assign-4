@@ -26,11 +26,20 @@ func (c *Controller) sendJob(_ shared.Message, id string) (shared.Message, error
 	}
 
 	timestamp := time.Now()
+	if _, ok := c.metric.GetMetric(MetricCrackStart); !ok {
+		c.metric.SetMetric(MetricCrackStart, time.Time{})
+	}
 	if c.crackStart == nil {
 		c.crackStart = &timestamp
 	}
 
+	assignTS := time.Now()
 	chunkID, _ := c.getUnassignedChunk(id)
+
+	c.metric.SetJobMetric(chunkID, JobMetric{
+		assignmentStart: assignTS, assignmentEnd: time.Now(),
+	})
+
 	c.chunkTimings[chunkID] = &chunkTiming{
 		dispatchStart:    timestamp,
 		chunkAssignTime:  time.Since(timestamp),

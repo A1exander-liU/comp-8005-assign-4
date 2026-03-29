@@ -43,6 +43,12 @@ func (c *Controller) handleJobResults(m shared.Message, id string) (shared.Messa
 
 	timestamp := time.Now()
 
+	c.metric.SetJobMetric(payload.ChunkID, JobMetric{
+		dispatchTime: payload.DispatchTime,
+		crackTime:    payload.CrackTime,
+		returnStart:  m.Timestamp, returnEnd: timestamp,
+	})
+
 	c.chunkTimings[payload.ChunkID].crackTime = payload.CrackTime
 	c.chunkTimings[payload.ChunkID].dispatchTime = payload.DispatchTime.Abs()
 	c.chunkTimings[payload.ChunkID].returnTime = time.Since(m.Timestamp).Abs()
@@ -55,6 +61,7 @@ func (c *Controller) handleJobResults(m shared.Message, id string) (shared.Messa
 	} else {
 		err = nil
 		done = true
+		c.metric.SetMetric(MetricCrackEnd, time.Time{})
 	}
 
 	c.chunks[payload.ChunkID].status = ChunkCompleted

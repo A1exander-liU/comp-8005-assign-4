@@ -121,6 +121,8 @@ type Controller struct {
 	LatencyDispatchTime time.Time
 	LatencyCrack        time.Duration
 	LatencyReturn       time.Duration
+
+	metric *Metric
 }
 
 // NewController creates a new Controller object.
@@ -133,6 +135,8 @@ func NewController(logger *zap.Logger) *Controller {
 		chunkTimings: map[int]*chunkTiming{},
 		deltaTimings: make([]int, 0),
 		crackStart:   nil,
+
+		metric: NewMetric(),
 	}
 }
 
@@ -269,6 +273,7 @@ func (c *Controller) processHeartbeat(workerID string) {
 
 			c.Logger.Info("Receieved heartbeat", zap.Int("total", payload.TotalTested), zap.Int("delta", payload.DeltaTested))
 			c.deltaTimings = append(c.deltaTimings, payload.DeltaTested)
+			c.metric.AddHeartbeatMetric(payload, c.Config.HeartbeatSeconds)
 
 			// failed to respond to heartbeat in time, revoke the job
 			if worker.HeartbeatsSinceReply > 1 {
