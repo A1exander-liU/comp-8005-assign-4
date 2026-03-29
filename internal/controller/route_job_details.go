@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
+	"github.com/A1exander-liU/comp-8005-assign-4/internal/shared"
 )
 
 // sendJob handles sending job details to a worker, only registered workers can receive job details.

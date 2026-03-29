@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
+	"github.com/A1exander-liU/comp-8005-assign-4/internal/shared"
 )
 
 // handleRegistration registers a worker by updating their worker connection information by setting the

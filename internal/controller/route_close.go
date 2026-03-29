@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
+	"github.com/A1exander-liU/comp-8005-assign-4/internal/shared"
 )
 
 // handleClose performs cleanup logic after a worker requests to close their connection.

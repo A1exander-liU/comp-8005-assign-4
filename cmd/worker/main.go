@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
-	"github.com/A1exander-liU/comp-8005-assign-2/internal/worker"
+	"github.com/A1exander-liU/comp-8005-assign-4/internal/shared"
+	"github.com/A1exander-liU/comp-8005-assign-4/internal/worker"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

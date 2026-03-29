@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
+	"github.com/A1exander-liU/comp-8005-assign-4/internal/shared"
 )
 
 func (w *Worker) ParseArguments() Config {

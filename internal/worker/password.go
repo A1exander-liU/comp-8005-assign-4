@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/A1exander-liU/comp-8005-assign-2/internal/shared"
+	"github.com/A1exander-liU/comp-8005-assign-4/internal/shared"
 	"github.com/go-crypt/crypt"
 	"go.uber.org/zap"
 )
