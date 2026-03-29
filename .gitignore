@@ -1,1 +1,4 @@
 build
+
+# state files
+data/*.json
