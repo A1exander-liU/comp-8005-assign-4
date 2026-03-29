@@ -79,9 +79,11 @@ func (c *Controller) handleJobResults(m shared.Message, id string) (shared.Messa
 	c.LatencyCrack = payload.CrackTime
 	c.LatencyReturn = m.Timestamp.Sub(timestamp)
 
-	c.displayJobResults(payload.Password, err, payload.ChunkID, timestamp)
+	// c.displayJobResults(payload.Password, err, payload.ChunkID, timestamp)
+	c.printJobResults(payload.Password, err, payload.ChunkID)
 
 	if err == nil {
+		c.printFinalResults(payload.Password, err)
 		c.sendStop()
 	}
 

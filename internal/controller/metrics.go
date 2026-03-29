@@ -139,7 +139,14 @@ func (m *Metric) HeartbeatMetrics() (float64, float64) {
 	return averageRate, variance
 }
 
-func (m *Metric) TotalRuntime() time.Duration {
+func (m *Metric) EndToEndMetrics() (
+	time.Duration,
+	time.Duration,
+	time.Duration,
+	time.Duration,
+	time.Duration,
+	time.Duration,
+) {
 	parseTime := m.globalTimings[MetricParseEnd].Sub(m.globalTimings[MetricParseStart])
 	crackTime := m.globalTimings[MetricCrackEnd].Sub(m.globalTimings[MetricCrackStart])
 
@@ -164,7 +171,5 @@ func (m *Metric) TotalRuntime() time.Duration {
 		checkpointOverhead += checkpointTime
 	}
 
-	totalTime := parseTime + crackTime + assignmentOverhead + dispatchOverhead + returnOverhead + checkpointOverhead
-
-	return totalTime
+	return parseTime, crackTime, assignmentOverhead, dispatchOverhead, returnOverhead, checkpointOverhead
 }
