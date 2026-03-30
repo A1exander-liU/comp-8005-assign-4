@@ -35,7 +35,6 @@ func (c *Controller) ParseArguments() Config {
 // and print out a usage if any of the arguments failed validation.
 func (c *Controller) HandleArguments(config Config) {
 	c.metric.SetMetric(MetricParseStart, time.Now())
-	parseStart := time.Now()
 	if config.Shadowfile == "" {
 		fmt.Println("Error: -f is required")
 		c.fs.Usage()
@@ -72,7 +71,6 @@ func (c *Controller) HandleArguments(config Config) {
 
 	c.Config = config
 	c.parseShadowFile()
-	c.LatencyParse = time.Since(parseStart)
 	c.metric.SetMetric(MetricParseEnd, time.Now())
 }
 

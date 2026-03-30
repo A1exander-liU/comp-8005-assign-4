@@ -30,8 +30,6 @@ func (c *Controller) handleRegistration(m shared.Message, id string) (shared.Mes
 
 	c.workers[id].Registered = true
 
-	c.LatencyDispatchTime = time.Now()
-
 	return shared.Message{
 			Version:   shared.MessageVersion,
 			ID:        id,

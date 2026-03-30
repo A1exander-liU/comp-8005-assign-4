@@ -29,9 +29,6 @@ func (c *Controller) sendJob(_ shared.Message, id string) (shared.Message, error
 	if _, ok := c.metric.GetMetric(MetricCrackStart); !ok {
 		c.metric.SetMetric(MetricCrackStart, time.Time{})
 	}
-	if c.crackStart == nil {
-		c.crackStart = &timestamp
-	}
 
 	assignTS := time.Now()
 	chunkID, _ := c.getUnassignedChunk(id)
@@ -39,12 +36,6 @@ func (c *Controller) sendJob(_ shared.Message, id string) (shared.Message, error
 	c.metric.SetJobMetric(chunkID, JobMetric{
 		assignmentStart: assignTS, assignmentEnd: time.Now(),
 	})
-
-	c.chunkTimings[chunkID] = &chunkTiming{
-		dispatchStart:    timestamp,
-		chunkAssignTime:  time.Since(timestamp),
-		chunkAssignStart: timestamp,
-	}
 
 	res := shared.Message{
 		Version: shared.MessageVersion, ID: id, Type: shared.MessageJobDetails, Message: "Job assignment successful",
@@ -64,8 +55,6 @@ func (c *Controller) sendJob(_ shared.Message, id string) (shared.Message, error
 	}
 
 	c.workers[id].newJobC <- true
-
-	c.LatencyDispatch = timestamp.Sub(c.LatencyDispatchTime)
 
 	return res, nil
 }

@@ -49,10 +49,6 @@ func (c *Controller) handleJobResults(m shared.Message, id string) (shared.Messa
 		returnStart:  m.Timestamp, returnEnd: timestamp,
 	})
 
-	c.chunkTimings[payload.ChunkID].crackTime = payload.CrackTime
-	c.chunkTimings[payload.ChunkID].dispatchTime = payload.DispatchTime.Abs()
-	c.chunkTimings[payload.ChunkID].returnTime = time.Since(m.Timestamp).Abs()
-
 	var err error
 	var done bool
 	if payload.Err != "" {
@@ -75,9 +71,6 @@ func (c *Controller) handleJobResults(m shared.Message, id string) (shared.Messa
 		Message:   "Job results accepted",
 		Payload:   shared.PayloadJobResultsResp{Done: done},
 	}
-
-	c.LatencyCrack = payload.CrackTime
-	c.LatencyReturn = m.Timestamp.Sub(timestamp)
 
 	// c.displayJobResults(payload.Password, err, payload.ChunkID, timestamp)
 	c.printJobResults(payload.Password, err, payload.ChunkID)

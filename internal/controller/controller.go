@@ -110,18 +110,8 @@ type Controller struct {
 	// ChunkID to chunk data
 	chunks map[int]*chunk
 
-	chunkTimings map[int]*chunkTiming
-	deltaTimings []int
-	crackStart   *time.Time
-
 	ShadowData shared.ShadowData
 	Config     Config
-
-	LatencyParse        time.Duration
-	LatencyDispatch     time.Duration
-	LatencyDispatchTime time.Time
-	LatencyCrack        time.Duration
-	LatencyReturn       time.Duration
 
 	metric *Metric
 }
@@ -131,11 +121,8 @@ func NewController(logger *zap.Logger) *Controller {
 	return &Controller{
 		Logger: logger,
 
-		workers:      map[string]*workerConnection{},
-		chunks:       map[int]*chunk{},
-		chunkTimings: map[int]*chunkTiming{},
-		deltaTimings: make([]int, 0),
-		crackStart:   nil,
+		workers: map[string]*workerConnection{},
+		chunks:  map[int]*chunk{},
 
 		metric: NewMetric(),
 	}
@@ -276,7 +263,6 @@ func (c *Controller) processHeartbeat(workerID string) {
 			payload := m.Payload.(shared.PayloadHearbeat)
 
 			c.Logger.Info("Receieved heartbeat", zap.Int("total", payload.TotalTested), zap.Int("delta", payload.DeltaTested))
-			c.deltaTimings = append(c.deltaTimings, payload.DeltaTested)
 			c.metric.AddHeartbeatMetric(payload, c.Config.HeartbeatSeconds)
 
 			// failed to respond to heartbeat in time, revoke the job
