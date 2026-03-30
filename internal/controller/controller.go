@@ -83,14 +83,6 @@ type chunk struct {
 	status ChunkStatus
 }
 
-type chunkTiming struct {
-	// durations
-	dispatchTime, chunkAssignTime, crackTime, returnTime time.Duration
-
-	// start times for recording across function calls if required
-	dispatchStart, chunkAssignStart, returnTimeStart time.Time
-}
-
 // Controller is reponsible for managing worker connections
 // for sending and receiving password cracking jobs.
 type Controller struct {
