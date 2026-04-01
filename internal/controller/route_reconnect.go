@@ -42,6 +42,7 @@ func (c *Controller) handleReconnect(m shared.Message, id string) (shared.Messag
 			Type:      shared.MessageReconnect,
 			Timestamp: time.Now(),
 			Message:   "Reconnection successful",
+			Payload:   shared.PayloadReconnectResp{ChunkID: chunkID},
 		},
 		nil
 }

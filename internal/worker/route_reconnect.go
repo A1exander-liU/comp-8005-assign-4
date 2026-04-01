@@ -13,6 +13,12 @@ func (w *Worker) routeReconnect(m shared.Message, s string) (shared.Message, err
 		return shared.Message{Type: shared.MessageRegister, Timestamp: time.Now()}, nil
 	}
 
+	payload := m.Payload.(shared.PayloadReconnectResp)
+	if payload.ChunkID != w.state.Payload.ChunkID {
+		w.Logger.Warn("Reconnected. Chunk was revovked, requesting new work", zap.Int("chunkID", w.state.Payload.ChunkID))
+		return shared.Message{Type: shared.MessageJobDetails, Timestamp: time.Now()}, nil
+	}
+
 	w.lastAttemptsSent = w.getTotalAttempts()
 
 	w.Logger.Info("Reconnection successful")

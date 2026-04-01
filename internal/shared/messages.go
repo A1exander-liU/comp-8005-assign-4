@@ -116,6 +116,10 @@ type PayloadReconnect struct {
 	ID string
 }
 
+type PayloadReconnectResp struct {
+	ChunkID int
+}
+
 // RegisterMessages registers the message structs to enable decoding of any types.
 //
 // Should be called before attempting to send messages.
@@ -127,4 +131,5 @@ func RegisterMessages() {
 	gob.Register(PayloadHearbeat{})
 	gob.Register(PayloadCheckpoint{})
 	gob.Register(PayloadReconnect{})
+	gob.Register(PayloadReconnectResp{})
 }
