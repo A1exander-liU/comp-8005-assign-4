@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-4/internal/shared"
@@ -20,7 +19,6 @@ func (w *Worker) routeJobDetails(m shared.Message, id string) (shared.Message, e
 	w.state.PasswordIndex = int(payload.ChunkIndex)
 	w.lastAttemptsSent = 0
 
-	fmt.Println("dispatch", m.Timestamp, time.Now())
 	go w.handleJobV1(payload, m.Timestamp, time.Now())
 
 	return shared.Message{}, nil
