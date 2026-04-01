@@ -254,7 +254,7 @@ func (c *Controller) processHeartbeat(workerID string) {
 
 			payload := m.Payload.(shared.PayloadHearbeat)
 
-			c.Logger.Info("Receieved heartbeat", zap.Int("total", payload.TotalTested), zap.Int("delta", payload.DeltaTested))
+			c.Logger.Info("Heartbeat received", zap.String("workerID", workerID), zap.Int("total", payload.TotalTested), zap.Int("delta", payload.DeltaTested))
 			c.metric.AddHeartbeatMetric(payload, c.Config.HeartbeatSeconds)
 
 			// failed to respond to heartbeat in time, revoke the job
