@@ -96,11 +96,11 @@ func (m *Metric) SetJobMetric(chunkID int, jm JobMetric) {
 		}
 
 		if jm.dispatchTime != 0 {
-			j.dispatchTime = jm.dispatchTime
+			j.dispatchTime = jm.dispatchTime.Abs()
 		}
 
 		if jm.crackTime != 0 {
-			j.crackTime = jm.crackTime
+			j.crackTime = jm.crackTime.Abs()
 		}
 	}
 }
@@ -160,8 +160,8 @@ func (m *Metric) EndToEndMetrics() (
 	var returnOverhead time.Duration
 
 	for _, jm := range m.jobTimings {
-		assignmentTime := jm.assignmentEnd.Sub(jm.assignmentStart)
-		returnTime := jm.returnEnd.Sub(jm.returnStart)
+		assignmentTime := jm.assignmentEnd.Sub(jm.assignmentStart).Abs()
+		returnTime := jm.returnEnd.Sub(jm.returnStart).Abs()
 
 		assignmentOverhead += assignmentTime
 		dispatchOverhead += jm.dispatchTime
