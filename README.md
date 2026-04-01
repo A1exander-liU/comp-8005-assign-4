@@ -1,10 +1,10 @@
-# COMP 8005 - Assignment 2
+# COMP 8005 - Assignment 4
 
-# Structure
+## Structure
 
 ```bash
 cmd/                  # individual programs
-  controller/         
+  controller/
   worker/
 data/                 # sample/test data for programs
 internal/             # lib
@@ -13,7 +13,7 @@ internal/             # lib
   worker/             # worker-specific libs
 ```
 
-# Running
+## Running
 
 ```bash
 ./build.sh
