@@ -97,6 +97,9 @@ type PayloadJobResultsResp struct {
 }
 
 type PayloadHearbeat struct {
+	// Current work reporting
+	ChunkID int
+
 	// Number of password candidates tested in total so far
 	TotalTested int
 

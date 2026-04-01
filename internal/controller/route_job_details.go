@@ -57,7 +57,7 @@ func (c *Controller) sendJob(_ shared.Message, id string) (shared.Message, error
 
 	c.workers[id].newJobC <- true
 
-	c.Logger.Info("Job details sent", zap.Int("chunkID", chunkID))
+	c.Logger.Info("Job details sent", zap.String("workerID", id), zap.Int("chunkID", chunkID))
 
 	return res, nil
 }
