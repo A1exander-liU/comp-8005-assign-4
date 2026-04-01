@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-4/internal/shared"
+	"go.uber.org/zap"
 )
 
 // sendJob handles sending job details to a worker, only registered workers can receive job details.
@@ -55,6 +56,8 @@ func (c *Controller) sendJob(_ shared.Message, id string) (shared.Message, error
 	}
 
 	c.workers[id].newJobC <- true
+
+	c.Logger.Info("Job details sent", zap.Int("chunkID", chunkID))
 
 	return res, nil
 }
