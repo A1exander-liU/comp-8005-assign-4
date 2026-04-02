@@ -18,7 +18,7 @@ func (c *Controller) handleJobResults(m shared.Message, id string) (shared.Messa
 				Version:   shared.MessageVersion,
 				ID:        id,
 				Type:      shared.MessageJobResults,
-				Timestamp: time.Now(),
+				Timestamp: time.Now().UTC(),
 				Message:   "Job results rejected",
 				Err:       err,
 			},
@@ -34,14 +34,14 @@ func (c *Controller) handleJobResults(m shared.Message, id string) (shared.Messa
 				Version:   shared.MessageVersion,
 				ID:        id,
 				Type:      shared.MessageJobResults,
-				Timestamp: time.Now(),
+				Timestamp: time.Now().UTC(),
 				Message:   "Job results rejected",
 				Err:       err,
 			},
 			nil
 	}
 
-	timestamp := time.Now()
+	timestamp := time.Now().UTC()
 
 	c.metric.SetJobMetric(payload.ChunkID, JobMetric{
 		dispatchTime: payload.DispatchTime,
@@ -67,7 +67,7 @@ func (c *Controller) handleJobResults(m shared.Message, id string) (shared.Messa
 		Version:   shared.MessageVersion,
 		ID:        id,
 		Type:      shared.MessageJobResults,
-		Timestamp: time.Now(),
+		Timestamp: time.Now().UTC(),
 		Message:   "Job results accepted",
 		Payload:   shared.PayloadJobResultsResp{Done: done},
 	}

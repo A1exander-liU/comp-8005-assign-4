@@ -15,9 +15,9 @@ func (w *Worker) routeJobResults(m shared.Message, s string) (shared.Message, er
 
 		// password was found, exit
 		if payload.Done {
-			return shared.Message{Type: shared.MessageClose, Timestamp: time.Now()}, nil
+			return shared.Message{Type: shared.MessageClose, Timestamp: time.Now().UTC()}, nil
 		}
 	}
 
-	return shared.Message{Type: shared.MessageJobDetails, Timestamp: time.Now()}, nil
+	return shared.Message{Type: shared.MessageJobDetails, Timestamp: time.Now().UTC()}, nil
 }

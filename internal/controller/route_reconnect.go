@@ -16,7 +16,7 @@ func (c *Controller) handleReconnect(m shared.Message, id string) (shared.Messag
 		return shared.Message{
 				Version:   shared.MessageVersion,
 				Type:      shared.MessageReconnect,
-				Timestamp: time.Now(),
+				Timestamp: time.Now().UTC(),
 				Message:   "Reconnection failed",
 				Err:       err,
 			},
@@ -40,7 +40,7 @@ func (c *Controller) handleReconnect(m shared.Message, id string) (shared.Messag
 	return shared.Message{
 			Version:   shared.MessageVersion,
 			Type:      shared.MessageReconnect,
-			Timestamp: time.Now(),
+			Timestamp: time.Now().UTC(),
 			Message:   "Reconnection successful",
 			Payload:   shared.PayloadReconnectResp{ChunkID: chunkID},
 		},

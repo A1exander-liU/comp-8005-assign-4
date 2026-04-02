@@ -10,7 +10,7 @@ import (
 func (w *Worker) routeRegister(m shared.Message, _ string) (shared.Message, error) {
 	if m.Err != "" {
 		w.Logger.Warn("Registration failed", zap.String("error", m.Err))
-		return shared.Message{Type: shared.MessageClose, Timestamp: time.Now()}, nil
+		return shared.Message{Type: shared.MessageClose, Timestamp: time.Now().UTC()}, nil
 	}
 
 	payload := m.Payload.(shared.PayloadRegisterResp)
@@ -21,5 +21,5 @@ func (w *Worker) routeRegister(m shared.Message, _ string) (shared.Message, erro
 
 	w.Logger.Info("Created initial state")
 
-	return shared.Message{Type: shared.MessageJobDetails, Timestamp: time.Now()}, nil
+	return shared.Message{Type: shared.MessageJobDetails, Timestamp: time.Now().UTC()}, nil
 }

@@ -19,23 +19,23 @@ func (c *Controller) sendJob(_ shared.Message, id string) (shared.Message, error
 				Version:   shared.MessageVersion,
 				ID:        id,
 				Type:      shared.MessageJobDetails,
-				Timestamp: time.Now(),
+				Timestamp: time.Now().UTC(),
 				Message:   "Job assignment failed",
 				Err:       err,
 			},
 			nil
 	}
 
-	timestamp := time.Now()
+	timestamp := time.Now().UTC()
 	if _, ok := c.metric.GetMetric(MetricCrackStart); !ok {
 		c.metric.SetMetric(MetricCrackStart, time.Time{})
 	}
 
-	assignTS := time.Now()
+	assignTS := time.Now().UTC()
 	chunkID, _ := c.getUnassignedChunk(id)
 
 	c.metric.SetJobMetric(chunkID, JobMetric{
-		assignmentStart: assignTS, assignmentEnd: time.Now(),
+		assignmentStart: assignTS, assignmentEnd: time.Now().UTC(),
 	})
 
 	res := shared.Message{

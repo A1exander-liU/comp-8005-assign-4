@@ -127,7 +127,7 @@ func (w *Worker) Start() {
 		w.router.Send(shared.Message{
 			Version:   shared.MessageVersion,
 			Type:      shared.MessageRegister,
-			Timestamp: time.Now(),
+			Timestamp: time.Now().UTC(),
 			Message:   "Registration request",
 		})
 	} else {
@@ -135,7 +135,7 @@ func (w *Worker) Start() {
 		w.router.Send(shared.Message{
 			Version:   shared.MessageVersion,
 			Type:      shared.MessageReconnect,
-			Timestamp: time.Now(),
+			Timestamp: time.Now().UTC(),
 			Message:   "Reconnection request",
 			Payload:   shared.PayloadReconnect{ID: state.ID},
 		})

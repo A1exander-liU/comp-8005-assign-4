@@ -17,7 +17,7 @@ func (w *Worker) routeHeartbeat(m shared.Message, s string) (shared.Message, err
 	return shared.Message{
 			Type:      shared.MessageHeartbeat,
 			Payload:   shared.PayloadHearbeat{ChunkID: w.state.Payload.ChunkID, TotalTested: total, DeltaTested: delta, ActiveThreads: w.Config.Threads},
-			Timestamp: time.Now(),
+			Timestamp: time.Now().UTC(),
 		},
 		nil
 }

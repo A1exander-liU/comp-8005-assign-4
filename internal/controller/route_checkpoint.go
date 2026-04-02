@@ -21,7 +21,7 @@ func (c *Controller) handleJobCheckpoint(m shared.Message, id string) (shared.Me
 		c.chunks[payload.ChunkID].index = payload.ChunkIndex
 	}
 
-	c.metric.AddCheckpointTiming(m.Timestamp, time.Now())
+	c.metric.AddCheckpointTiming(m.Timestamp, time.Now().UTC())
 
 	return shared.Message{}, nil
 }

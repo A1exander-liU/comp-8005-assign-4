@@ -10,7 +10,7 @@ import (
 func (w *Worker) routeJobDetails(m shared.Message, id string) (shared.Message, error) {
 	if m.Err != "" {
 		w.Logger.Warn("Failed to receive job", zap.String("error", m.Err))
-		return shared.Message{Type: shared.MessageClose, Timestamp: time.Now()}, nil
+		return shared.Message{Type: shared.MessageClose, Timestamp: time.Now().UTC()}, nil
 	}
 
 	payload := m.Payload.(shared.PayloadJobDetails)
@@ -19,7 +19,7 @@ func (w *Worker) routeJobDetails(m shared.Message, id string) (shared.Message, e
 	w.state.PasswordIndex = int(payload.ChunkIndex)
 	w.lastAttemptsSent = 0
 
-	go w.handleJobV1(payload, m.Timestamp, time.Now())
+	go w.handleJobV1(payload, m.Timestamp, time.Now().UTC())
 
 	return shared.Message{}, nil
 }

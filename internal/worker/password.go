@@ -101,7 +101,7 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails, dispatchStart, di
 					w.router.Send(shared.Message{
 						Version:   shared.MessageVersion,
 						Type:      shared.MessageJobCheckpoint,
-						Timestamp: time.Now(),
+						Timestamp: time.Now().UTC(),
 						Message:   "Send checkpoint",
 						Payload: shared.PayloadCheckpoint{
 							ChunkID:    payload.ChunkID,
@@ -137,7 +137,7 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails, dispatchStart, di
 			shared.Message{
 				Version:   shared.MessageVersion,
 				Type:      shared.MessageJobResults,
-				Timestamp: time.Now(),
+				Timestamp: time.Now().UTC(),
 				Message:   "Job results sent",
 				Payload: shared.PayloadJobResults{
 					Password:  foundPassword,
@@ -152,7 +152,7 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails, dispatchStart, di
 			shared.Message{
 				Version:   shared.MessageVersion,
 				Type:      shared.MessageJobResults,
-				Timestamp: time.Now(),
+				Timestamp: time.Now().UTC(),
 				Message:   "Job results sent",
 				Payload: shared.PayloadJobResults{
 					Password:  foundPassword,

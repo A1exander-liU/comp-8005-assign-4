@@ -21,7 +21,7 @@ func (c *Controller) handleRegistration(m shared.Message, id string) (shared.Mes
 				Version:   shared.MessageVersion,
 				ID:        id,
 				Type:      shared.MessageRegister,
-				Timestamp: time.Now(),
+				Timestamp: time.Now().UTC(),
 				Message:   "Registration failed",
 				Err:       err,
 			},
@@ -34,7 +34,7 @@ func (c *Controller) handleRegistration(m shared.Message, id string) (shared.Mes
 			Version:   shared.MessageVersion,
 			ID:        id,
 			Type:      shared.MessageRegister,
-			Timestamp: time.Now(),
+			Timestamp: time.Now().UTC(),
 			Message:   "Registration successful",
 			Payload: shared.PayloadRegisterResp{
 				ID: id,

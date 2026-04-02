@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -51,7 +52,7 @@ func NewMetric() *Metric {
 // provided time value.
 func (m *Metric) SetMetric(i MetricItem, t time.Time) {
 	if t.Equal(time.Time{}) {
-		m.globalTimings[i] = time.Now()
+		m.globalTimings[i] = time.Now().UTC()
 	} else {
 		m.globalTimings[i] = t
 	}
@@ -118,8 +119,10 @@ func (m *Metric) AddHeartbeatMetric(payload shared.PayloadHearbeat, heartbeatSec
 // AddCheckpointTiming adds a checkpoint timing for a given start and end time.
 func (m *Metric) AddCheckpointTiming(start, end time.Time) {
 	if end.Before(start) {
+		fmt.Printf("START=%v | END=%v | %v\n", end, start, start.Sub(end))
 		m.checkpointTimings = append(m.checkpointTimings, []time.Time{end, start})
 	} else {
+		fmt.Printf("START=%v | END=%v | %v\n", start, end, end.Sub(start))
 		m.checkpointTimings = append(m.checkpointTimings, []time.Time{start, end})
 	}
 }
