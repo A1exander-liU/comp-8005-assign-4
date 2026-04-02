@@ -28,7 +28,7 @@ func (c *Controller) sendJob(_ shared.Message, id string) (shared.Message, error
 
 	timestamp := time.Now().UTC()
 	if _, ok := c.metric.GetMetric(MetricCrackStart); !ok {
-		c.metric.SetMetric(MetricCrackStart, time.Time{})
+		c.metric.SetMetric(MetricCrackStart, time.Now())
 	}
 
 	assignTS := time.Now().UTC()

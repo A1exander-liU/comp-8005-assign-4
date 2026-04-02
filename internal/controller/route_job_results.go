@@ -57,7 +57,7 @@ func (c *Controller) handleJobResults(m shared.Message, id string) (shared.Messa
 	} else {
 		err = nil
 		done = true
-		c.metric.SetMetric(MetricCrackEnd, time.Time{})
+		c.metric.SetMetric(MetricCrackEnd, time.Now())
 	}
 
 	c.chunks[payload.ChunkID].status = ChunkCompleted
