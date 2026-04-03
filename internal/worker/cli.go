@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/A1exander-liU/comp-8005-assign-4/internal/shared"
 )
@@ -49,6 +50,19 @@ func (w *Worker) HandleArguments(config *Config) {
 	result := shared.ParseAddress(config.ControllerIP, config.ControllerPort)
 	if result == "" {
 		fmt.Println("controller ip is not in correct format")
+		w.fs.Usage()
+		os.Exit(1)
+	}
+
+	dir := filepath.Dir(config.CheckpointFile)
+	dirInfo, err := os.Stat(dir)
+	if err != nil {
+		fmt.Printf("Failed to access %s: %v\n", dir, err)
+		w.fs.Usage()
+		os.Exit(1)
+	}
+	if !dirInfo.IsDir() {
+		fmt.Printf("%s is not a directory\n", dir)
 		w.fs.Usage()
 		os.Exit(1)
 	}
