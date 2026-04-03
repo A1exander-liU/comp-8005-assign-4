@@ -105,7 +105,7 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails, dispatchStart, di
 						Message:   "Send checkpoint",
 						Payload: shared.PayloadCheckpoint{
 							ChunkID:    payload.ChunkID,
-							ChunkIndex: idx,
+							ChunkIndex: uint64(n),
 						},
 					})
 				}
