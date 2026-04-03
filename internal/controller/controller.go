@@ -139,7 +139,7 @@ func (c *Controller) handleWorkerCrashes() {
 			for {
 				select {
 				case <-timer.C:
-					c.Logger.Info("Worker did not reconnect in time", zap.String("workerID", id))
+					c.Logger.Info("Worker did not reconnect in time, revoking work", zap.String("workerID", id), zap.Int("chunkID", worker.ChunkID))
 					c.revokeJob(id, worker.ChunkID)
 					return
 				case <-worker.reconnectionC:

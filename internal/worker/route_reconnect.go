@@ -22,8 +22,8 @@ func (w *Worker) routeReconnect(m shared.Message, s string) (shared.Message, err
 	w.lastAttemptsSent = w.getTotalAttempts()
 
 	w.Logger.Info("Reconnection successful")
-
-	go w.handleJobV1(w.state.Payload, time.Time{}, time.Now().UTC())
+	w.Logger.Info("Resuming work on chunk", zap.Int("chunkID", w.state.Payload.ChunkID), zap.Int("PasswordIndex", w.state.PasswordIndex))
+	go w.handleJobV1(w.state.Payload, m.Timestamp, time.Now().UTC())
 
 	return shared.Message{}, nil
 }
