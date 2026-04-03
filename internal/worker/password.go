@@ -60,18 +60,12 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails, dispatchStart, di
 	index.Store(uint64(w.state.PasswordIndex))
 	passwordCrackStart := time.Now()
 
-	for i := range w.Config.Threads {
-		wg.Add(1)
-		workerID := i + 1
-
-		go func() {
-			defer wg.Done()
-
+	for range w.Config.Threads {
+		wg.Go(func() {
 			for {
 				// Check cancellation first
 				select {
 				case <-ctx.Done():
-					// fmt.Printf("[worker %d] cancelled\n", workerID)
 					return
 				default:
 				}
@@ -83,13 +77,11 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails, dispatchStart, di
 				w.mu.Unlock()
 
 				if idx >= payload.ChunkEnd {
-					// fmt.Printf("[worker %d] no more passwords\n", workerID)
 					return
 				}
 
 				password := shared.EncodeBase(idx, shared.SearchSpace)
 				if digest.Match(password) {
-					w.Logger.Info(fmt.Sprintf("[worker %d] found password: %s\n", workerID, password))
 					foundPasswd.Store(password)
 					found.Store(true)
 					cancel() // signal all other workers
@@ -110,7 +102,7 @@ func (w *Worker) handleJobV1(payload shared.PayloadJobDetails, dispatchStart, di
 					})
 				}
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
