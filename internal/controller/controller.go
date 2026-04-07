@@ -136,6 +136,16 @@ func (c *Controller) handleWorkerCrashes() {
 		go func() {
 			timer := time.NewTimer(time.Duration(c.Config.HeartbeatSeconds) * time.Second)
 
+			// drain reconnection channel to prevent false positives
+		drain:
+			for {
+				select {
+				case <-worker.reconnectionC:
+				default:
+					break drain
+				}
+			}
+
 			for {
 				select {
 				case <-timer.C:
