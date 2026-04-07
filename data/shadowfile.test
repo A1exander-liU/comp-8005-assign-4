@@ -31,6 +31,7 @@ bcrypt-abc:$2b$05$ZEhjgv8y7F/I7u97wTNSLeuGhzBw8oyh3o3qnZcGhGo/H2k00VhsG
 bcrypt-a#?:$2b$05$/.JA/Ou9rzYgyaiYiUOUQePErjgxtWLYfXPUs6WqZpiKd6q6KLKsm
 bcrypt-ABC:$2b$05$VyfvSES92ksi6ah54eJIsuen2KY9RG.MP0V5JXJ7tokkQWp9PUI/a
 bcrypt-456:$2b$05$RkByGWB3KjkYV9do5E7zteqr/RZKGpzNfgPVl27aMunoEmk7nSYem
+bcrypt-1234:$2b$05$XniTCBpWjuT.UACvMlm7s.VHk652aUxiGYEu3HGS3YDjAskfolv7i
 
 yescrypt-abc:$y$j9T$5VDqOc9J7gL2fOtNU5lX3/$lJVXz9KmzSza1Z76AsFXgs7MmmraJheMlDVMVEZ.2w4
 yescrypt-a#?:$y$j9T$j65jdggkirBuqAgx.HX0y/$0AwKLVcQArmO/GFDtIVxou8gw/AsPI.01uUwel7eCD8
