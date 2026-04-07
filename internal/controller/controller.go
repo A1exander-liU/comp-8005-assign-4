@@ -93,6 +93,8 @@ type Controller struct {
 	workers  map[string]*workerConnection
 	fs       *flag.FlagSet
 
+	chunksMutex sync.RWMutex
+
 	// starting id of next chunk to generate
 	// id 0 = 0 * chunk size
 	// id 10 = 10 * chunk size
@@ -171,17 +173,17 @@ func (c *Controller) handleWorkerCrashes() {
 // In the case, a chunk couldn't be assigned, this will return a chunk id of -1 and false.
 func (c *Controller) getUnassignedChunk(workerID string) (int, bool) {
 	// assign existing chunk first
-	c.nextChunkIDMutex.Lock()
+	c.chunksMutex.RLock()
 	for chunkID, chunk := range c.chunks {
 		if chunk.status != ChunkUnassigned {
 			continue
 		}
+		c.chunksMutex.RUnlock()
 
 		c.assignJob(workerID, chunkID)
-		c.nextChunkIDMutex.Unlock()
 		return chunkID, true
 	}
-	c.nextChunkIDMutex.Unlock()
+	c.chunksMutex.RUnlock()
 
 	var nextID int
 	c.nextChunkIDMutex.Lock()

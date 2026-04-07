@@ -4,6 +4,9 @@ package controller
 //
 // A new chunk will be created if not already available.
 func (c *Controller) assignJob(workerID string, chunkID int) {
+	c.chunksMutex.Lock()
+	defer c.chunksMutex.Unlock()
+
 	c.workers[workerID].ChunkID = chunkID
 
 	if existingChunk, ok := c.chunks[chunkID]; !ok {
