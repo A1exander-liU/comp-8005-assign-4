@@ -2,6 +2,7 @@ package controller
 
 import (
 	"math"
+	"sync"
 	"time"
 
 	"github.com/A1exander-liU/comp-8005-assign-4/internal/shared"
@@ -34,6 +35,8 @@ type Metric struct {
 	jobTimings        map[int]*JobMetric
 	checkpointTimings [][]time.Time
 	heartbeatMetrics  []HeartbeatMetric
+
+	mu sync.RWMutex
 }
 
 func NewMetric() *Metric {
@@ -69,6 +72,9 @@ func (m *Metric) GetMetric(i MetricItem) (time.Time, bool) {
 //
 // It will return false if no metrics for the chunk was set.
 func (m *Metric) GetJobMetric(chunkID int) (*JobMetric, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	jm, ok := m.jobTimings[chunkID]
 	return jm, ok
 }
@@ -78,6 +84,8 @@ func (m *Metric) GetJobMetric(chunkID int) (*JobMetric, bool) {
 // The passed job metric should set all the values it wishes to update. A time.time{}
 // will not update the specifc time of the job metric.
 func (m *Metric) SetJobMetric(chunkID int, jm JobMetric) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if j, ok := m.GetJobMetric(chunkID); !ok {
 		m.jobTimings[chunkID] = &jm
 	} else {
