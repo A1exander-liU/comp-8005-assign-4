@@ -86,7 +86,7 @@ func (m *Metric) GetJobMetric(chunkID int) (*JobMetric, bool) {
 func (m *Metric) SetJobMetric(chunkID int, jm JobMetric) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if j, ok := m.GetJobMetric(chunkID); !ok {
+	if j, ok := m.jobTimings[chunkID]; !ok {
 		m.jobTimings[chunkID] = &jm
 	} else {
 		if !jm.assignmentStart.Equal(time.Time{}) {
